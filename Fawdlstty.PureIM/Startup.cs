@@ -63,8 +63,11 @@ namespace Fawdlstty.PureIM {
 						//} catch (Exception _ex) {
 						//	await Log.WriteAsync (_ex);
 						//	await _ws.MySendFailureAsync (-1, WsAllType.info, -1, "auth failed");
-						//	await _ws.MyCloseAsync ();	
+						//	await _ws.MyCloseAsync ();
 						//}
+
+
+						// https://docs.microsoft.com/zh-cn/aspnet/core/fundamentals/websockets?view=aspnetcore-6.0
 					}
 					return;
 				}

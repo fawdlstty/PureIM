@@ -14,10 +14,10 @@ namespace Fawdlstty.PureIM.ImStructs {
 		/// <summary>
 		/// WS断开连接后赋值，用于确定超时后发送状态（此对象）的存在时间
 		/// </summary>
-		private DateTime ElapsedTime { get; set; } = DateTime.Now + TimeSpan.FromMinutes (10);
+		private DateTime ElapsedTime { get; set; } = DateTime.Now.Add (Config.OnlineMessageCache);
 
 		// 发送状态缓存
-		private List<(ImMessage _msg, DateTime _pstime)> SendCaches = new List<(ImMessage _msg, DateTime _pstime)> ();
+		private List<(IImMessage _msg, DateTime _pstime)> SendCaches = new List<(IImMessage _msg, DateTime _pstime)> ();
 		private static AsyncLocker SendCachesMutex = new AsyncLocker ();
 
 		// 接收状态缓存 （已接收的信息）
@@ -34,10 +34,10 @@ namespace Fawdlstty.PureIM.ImStructs {
 					using (var _locker = await SendCachesMutex.LockAsync ()) {
 						if (WS != null && SendCaches.Any () && SendCaches[0]._pstime <= DateTime.Now) {
 							_ = ImplSendAsync (SendCaches[0]._msg.ToBytes ());
-							SendCaches.Add ((SendCaches[0]._msg, DateTime.Now.AddSeconds (10)));
+							SendCaches.Add ((SendCaches[0]._msg, DateTime.Now.Add (Config.MessageResend)));
 							SendCaches.RemoveAt (0);
 						}
-						_next_process_time = SendCaches.Any () ? SendCaches[0]._pstime : DateTime.Now.AddSeconds (10);
+						_next_process_time = SendCaches.Any () ? SendCaches[0]._pstime : DateTime.Now.Add (Config.MessageResend);
 					}
 					if (_next_process_time > DateTime.Now)
 						await Task.Delay (_next_process_time - DateTime.Now);
@@ -51,10 +51,10 @@ namespace Fawdlstty.PureIM.ImStructs {
 		/// </summary>
 		/// <param name="_msg"></param>
 		/// <returns></returns>
-		public async Task SendAsync (ImMessage _msg) {
+		public async Task SendAsync (IImMessage _msg) {
 			_ = ImplSendAsync (_msg.Data);
 			using (var _locker = await SendCachesMutex.LockAsync ())
-				SendCaches.Add ((_msg, DateTime.Now.AddSeconds (10)));
+				SendCaches.Add ((_msg, DateTime.Now.Add (Config.MessageResend)));
 		}
 
 		/// <summary>
@@ -65,7 +65,7 @@ namespace Fawdlstty.PureIM.ImStructs {
 		private async Task<bool> ImplSendAsync (byte[] _data) {
 			if (WS != null) {
 				try {
-					var _source = new CancellationTokenSource (TimeSpan.FromSeconds (10));
+					var _source = new CancellationTokenSource (Config.MessageTimeout);
 					await WS.SendAsync (_data, WebSocketMessageType.Binary, true, _source.Token);
 					return true;
 				} catch (Exception) {
@@ -75,7 +75,7 @@ namespace Fawdlstty.PureIM.ImStructs {
 		}
 
 		public async Task OnReadAsync (byte[] _data) {
-			var _msg = ImMessage.FromBytes (_data);
+			var _msg = IImMessage.FromBytes (_data);
 			if (_msg == null)
 				return;
 			if ((_msg.Type & MsgType.Send) > 0) {
@@ -84,7 +84,7 @@ namespace Fawdlstty.PureIM.ImStructs {
 						if (RecvCaches[i]._msgid == _msg.MsgId)
 							return;
 					}
-					RecvCaches.Add ((_msg.MsgId, DateTime.Now.AddMinutes (1)));
+					RecvCaches.Add ((_msg.MsgId, DateTime.Now.Add (Config.OnlineMessageCache)));
 				}
 				// TODO 处理信息
 			} else if ((_msg.Type & MsgType.Reply) > 0) {
