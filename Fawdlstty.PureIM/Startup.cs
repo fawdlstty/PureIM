@@ -8,8 +8,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM {
@@ -46,7 +48,9 @@ namespace Fawdlstty.PureIM {
 						string _auth = _ctx.Request.Query ["auth"].ToString ();
 						// TODO check
 						using var _ws = await _ctx.WebSockets.AcceptWebSocketAsync ();
+						// TODO 看情况是否并入现有socket
 						var _client = new ImClient { WS = _ws, UserId = _userid };
+						await _client.Process ();
 						//try {
 						//	string _auth = _ctx.Request.Query ["auth"].ToString ();
 						//	var _key = new SymmetricSecurityKey (Encoding.UTF8.GetBytes ("ddIASHDFIUABSIDABDIAfafa"));

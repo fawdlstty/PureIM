@@ -20,15 +20,17 @@ namespace Fawdlstty.PureIM.ImStructs.Message {
 	}
 
 	public interface IImMessage {
-		public async Task SerilizeAsync (Stream _s) {
-			_s.WriteByte (this switch {
+		public async Task<byte[]> SerilizeAsync () {
+			var _ms = new MemoryStream ();
+			_ms.WriteByte (this switch {
 				ReplyMessage => 0,
 				PrivateMessage => 1,
 				TopicMessage => 2,
 				BroadcastMessage => 3,
 				_ => 255,
 			});
-			await MessagePackSerializer.SerializeAsync (_s, this);
+			await MessagePackSerializer.SerializeAsync (_ms, this);
+			return _ms.ToArray ();
 		}
 
 		public static async Task<IImMessage> FromBytes (Stream _s) {
