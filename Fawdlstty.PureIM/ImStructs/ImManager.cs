@@ -61,7 +61,7 @@ namespace Fawdlstty.PureIM.ImStructs {
 				if (Clients.ContainsKey (_userid))
 					return Clients[_userid];
 			}
-			var _client = new ImClient { WS = null, UserId = _userid };
+			var _client = new ImClient (null, _userid);
 			await _client.Process ();
 		}
 

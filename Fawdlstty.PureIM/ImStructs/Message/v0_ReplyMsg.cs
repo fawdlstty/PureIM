@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM.ImStructs.Message {
 	public enum ReplyMsgType {
-		Accept			= 0x1,	// 发送成功
-		DestAccept		= 0x2,	// 对方已接收
-		DestReaded		= 0x3,	// 对方已读
-		ServerReject	= 0x4,	// 服务端拒收
+		Accept		= 0x1,	// 发送成功
+		DestAccept	= 0x2,	// 对方已接收
+		DestReaded	= 0x3,	// 对方已读
+		Reject		= 0x4,	// 服务端拒收
 	}
 
 

@@ -23,6 +23,7 @@ namespace Fawdlstty.PureIM.ImStructs.Message {
 	[MessagePack.Union (3, typeof (v0_StatusUpdateMsg))]
 	public interface IImMsg {
 		public long MsgId { get; set; }
+		public long MsgIdShadow { get; set; }
 
 
 

@@ -17,6 +17,7 @@ namespace Fawdlstty.PureIM.ImStructs.Message {
 	[MessagePackObject]
 	public class v0_StatusUpdateMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
-		[Key (1)] public StatusMsgType Type { get; set; }
+		[Key (1)] public long MsgIdShadow { get; set; }
+		[Key (2)] public StatusMsgType Type { get; set; }
 	}
 }

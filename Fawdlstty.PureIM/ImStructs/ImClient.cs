@@ -131,18 +131,18 @@ namespace Fawdlstty.PureIM.ImStructs {
 			} else if (_msg is v0_PrivateMsg _priv_msg) {
 				// 判定是否重复
 				bool _repeat = false;
+				if (_repeat)
+					return;
 
+				// 检查
 				if (!ClientMsgFilter.CheckAccept (_priv_msg)) {
-					await ImManager.SendAsync (new v0_ReplyMsg { MsgId = 0, MsgIdShadow = _priv_msg.MsgIdShadow, Type = ReplyMsgType.ServerReject });
+					await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Reject);
 					return;
 				}
 
 				// 回复发送者
-				var _msgid = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
-				var _reply = new v0_ReplyMsg { MsgId = _msgid, MsgIdShadow = _priv_msg.MsgIdShadow, Type = ReplyMsgType.Accept };
-				await ImManager.SendAsync (_reply);
-				if (_repeat)
-					return;
+				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
+				await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Accept);
 
 				// TODO 判定是否存档
 				bool _store = true;
@@ -151,12 +151,22 @@ namespace Fawdlstty.PureIM.ImStructs {
 				}
 
 				// TODO 发送给接收者
-				await ImManager.SendAsync (_priv_msg);
+				await ImManager.SendAsync (_priv_msg.ToUserId, _priv_msg);
 			} else if (_msg is v0_TopicMsg _topic_msg) {
+				// 判定是否重复
+				bool _repeat = false;
+				if (_repeat)
+					return;
+
+				// 检查
 				if (!ClientMsgFilter.CheckAccept (_topic_msg)) {
-					await ImManager.SendAsync (new v0_ReplyMsg { MsgId = 0, MsgIdShadow = _topic_msg.MsgIdShadow, Type = ReplyMsgType.ServerReject });
+					await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Reject);
 					return;
 				}
+
+				// 回复发送者
+				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
+				await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Accept);
 
 				// TODO 查询主题下所有用户
 				var _userids = new List<long> ();
@@ -169,10 +179,20 @@ namespace Fawdlstty.PureIM.ImStructs {
 
 				// TODO 发送给接收者
 			} else if (_msg is v0_BroadcastMsg _bdcast_msg) {
+				// 判定是否重复
+				bool _repeat = false;
+				if (_repeat)
+					return;
+
+				// 检查
 				if (!ClientMsgFilter.CheckAccept (_bdcast_msg)) {
-					await ImManager.SendAsync (new v0_ReplyMsg { MsgId = 0, MsgIdShadow = _topic_msg.MsgIdShadow, Type = ReplyMsgType.ServerReject });
+					await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Reject);
 					return;
 				}
+
+				// 回复发送者
+				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
+				await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Accept);
 
 				// 判定是否存档
 				bool _store = true;
@@ -182,8 +202,27 @@ namespace Fawdlstty.PureIM.ImStructs {
 
 				// TODO 发送给接收者
 			} else if (_msg is v0_StatusUpdateMsg _stupd_msg) {
+				// 判定是否重复
+				bool _repeat = false;
+				if (_repeat)
+					return;
 
+				// 检查
+				if (!ClientMsgFilter.CheckAccept (_stupd_msg)) {
+					await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Reject);
+					return;
+				}
+
+				// 回复发送者
+				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
+				await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Accept);
+
+				// 存档
 			}
+		}
+
+		public async Task SendReplyAsync (long _msgid, long _msgid_shadow, ReplyMsgType _type) {
+			await SendAsync (new v0_ReplyMsg { MsgId = _msgid, MsgIdShadow = _msgid_shadow, Type = _type });
 		}
 	}
 }
