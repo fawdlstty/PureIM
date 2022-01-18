@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM.ImStructs {
 	public class ImClient {
-		public WebSocket WS { init; private get; }
+		private WebSocket WS { get; set; }
 		public long UserId { init; get; }
 
 		/// <summary>
@@ -19,7 +19,7 @@ namespace Fawdlstty.PureIM.ImStructs {
 		private DateTime ElapsedTime { get; set; } = DateTime.Now.Add (Config.OnlineMessageCache);
 
 		// 发送状态缓存
-		private List<(IImMessage _msg, DateTime _pstime)> SendCaches = new List<(IImMessage _msg, DateTime _pstime)> ();
+		private List<(IImMsg _msg, DateTime _pstime)> SendCaches = new List<(IImMsg _msg, DateTime _pstime)> ();
 		private static AsyncLocker SendCachesMutex = new AsyncLocker ();
 
 		// 接收状态缓存 （已接收的信息）
@@ -28,15 +28,20 @@ namespace Fawdlstty.PureIM.ImStructs {
 
 
 
-		public ImClient () {
-			ImManager.Add (this);
+		public ImClient (WebSocket _ws, long _userid) {
+			WS = _ws;
+			UserId = _userid;
+		}
+
+		public async Task Process () {
+			await ImManager.Add (this);
 			// 处理未送达的情况
-			Task.Run (async () => {
+			_ = Task.Run (async () => {
 				while (WS != null || ElapsedTime <= DateTime.Now) {
 					DateTime _next_process_time;
 					using (var _locker = await SendCachesMutex.LockAsync ()) {
 						if (WS != null && SendCaches.Any () && SendCaches[0]._pstime <= DateTime.Now) {
-							_ = ImplSendAsync (await SendCaches[0]._msg.SerilizeAsync ());
+							_ = ImplSendAsync (SendCaches[0]._msg.Serilize ());
 							SendCaches.Add ((SendCaches[0]._msg, DateTime.Now.Add (Config.MessageResend)));
 							SendCaches.RemoveAt (0);
 						}
@@ -45,13 +50,14 @@ namespace Fawdlstty.PureIM.ImStructs {
 					if (_next_process_time > DateTime.Now)
 						await Task.Delay (_next_process_time - DateTime.Now);
 				}
-				ImManager.Remove (UserId);
+				await ImManager.Remove (UserId);
 			});
-		}
 
-		public async Task Process () {
+			// TODO 没有WS对象则不执行
 			var _buf = new byte [1024 * 4];
+			var _recv_data = new List<byte> ();
 			var _source = new CancellationTokenSource (TimeSpan.FromSeconds (10));
+			int _msg_size = 0;
 			while (!WS.CloseStatus.HasValue) {
 				try {
 					var _result = await WS.ReceiveAsync (_buf, CancellationToken.None);
@@ -60,14 +66,20 @@ namespace Fawdlstty.PureIM.ImStructs {
 						break;
 					}
 					_recv_data.AddRange (new ReadOnlySpan<byte> (_buf, 0, _result.Count).ToArray ());
-					if (_result.EndOfMessage) {
-						var _msg = Encoding.UTF8.GetString (_recv_data.ToArray ());
-						_recv_data.Clear ();
-						try {
-							await _on_client_msg (UserId, WS, _msg, _ip);
-						} catch (Exception _e) {
-							await WS.MySendFailureAsync (UserId, MsgType.reply, -1, _e.Message);
-						}
+
+					// 读取长度
+					if (_msg_size == 0 && _recv_data.Count >= 4) {
+						_msg_size = BitConverter.ToInt32 (_recv_data.Take (4).ToArray (), 0);
+						_recv_data.RemoveRange (0, 4);
+					}
+
+					// 读取内容
+					if (_msg_size > 0 && _recv_data.Count >= _msg_size) {
+						var _msg = IImMsg.FromBytes (_recv_data.Take (_msg_size).ToArray ());
+						_recv_data.RemoveRange (0, _msg_size);
+						if (_msg != null)
+							await OnRecvAsync (_msg);
+						_msg_size = 0;
 					}
 				} catch (Exception _ex) {
 					await Log.WriteAsync (_ex);
@@ -81,8 +93,10 @@ namespace Fawdlstty.PureIM.ImStructs {
 		/// </summary>
 		/// <param name="_msg"></param>
 		/// <returns></returns>
-		public async Task SendAsync (IImMessage _msg) {
-			_ = ImplSendAsync (await _msg.SerilizeAsync ());
+		public async Task SendAsync (IImMsg _msg) {
+			_ = ImplSendAsync (_msg.Serilize ());
+			if (_msg is v0_ReplyMsg)
+				return;
 			using (var _locker = await SendCachesMutex.LockAsync ())
 				SendCaches.Add ((_msg, DateTime.Now.Add (Config.MessageResend)));
 		}
@@ -104,30 +118,71 @@ namespace Fawdlstty.PureIM.ImStructs {
 			return false;
 		}
 
-		public async Task OnReadAsync (byte[] _data) {
-			var _msg = IImMessage.FromBytes (_data);
-			if (_msg == null)
-				return;
-			if ((_msg.Type & MsgType.Send) > 0) {
-				using (var _locker = await RecvCachesMutex.LockAsync ()) {
-					for (int i = 0; i < RecvCaches.Count; ++i) {
-						if (RecvCaches[i]._msgid == _msg.MsgId)
-							return;
-					}
-					RecvCaches.Add ((_msg.MsgId, DateTime.Now.Add (Config.OnlineMessageCache)));
-				}
-				// TODO 处理信息
-			} else if ((_msg.Type & MsgType.Reply) > 0) {
+		public async Task OnRecvAsync (IImMsg _msg) {
+			if (_msg is v0_ReplyMsg _reply_msg) {
 				using (var _locker = await SendCachesMutex.LockAsync ()) {
 					for (int i = 0; i < SendCaches.Count; ++i) {
-						if (SendCaches[i]._msg.MsgId == _msg.MsgId) {
+						if (SendCaches[i]._msg.MsgId == _reply_msg.MsgId) {
 							SendCaches.RemoveAt (i);
-							return;
+							break;
 						}
 					}
 				}
-			} else {
-				await Log.WriteAsync ("Unknown Message Status. Ignore.");
+			} else if (_msg is v0_PrivateMsg _priv_msg) {
+				// 判定是否重复
+				bool _repeat = false;
+
+				if (!ClientMsgFilter.CheckAccept (_priv_msg)) {
+					await ImManager.SendAsync (new v0_ReplyMsg { MsgId = 0, MsgIdShadow = _priv_msg.MsgIdShadow, Type = ReplyMsgType.ServerReject });
+					return;
+				}
+
+				// 回复发送者
+				var _msgid = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
+				var _reply = new v0_ReplyMsg { MsgId = _msgid, MsgIdShadow = _priv_msg.MsgIdShadow, Type = ReplyMsgType.Accept };
+				await ImManager.SendAsync (_reply);
+				if (_repeat)
+					return;
+
+				// TODO 判定是否存档
+				bool _store = true;
+				if (_store) {
+					// TODO 存数据库
+				}
+
+				// TODO 发送给接收者
+				await ImManager.SendAsync (_priv_msg);
+			} else if (_msg is v0_TopicMsg _topic_msg) {
+				if (!ClientMsgFilter.CheckAccept (_topic_msg)) {
+					await ImManager.SendAsync (new v0_ReplyMsg { MsgId = 0, MsgIdShadow = _topic_msg.MsgIdShadow, Type = ReplyMsgType.ServerReject });
+					return;
+				}
+
+				// TODO 查询主题下所有用户
+				var _userids = new List<long> ();
+
+				// 判定是否存档
+				bool _store = true;
+				if (_store) {
+					// TODO 存数据库
+				}
+
+				// TODO 发送给接收者
+			} else if (_msg is v0_BroadcastMsg _bdcast_msg) {
+				if (!ClientMsgFilter.CheckAccept (_bdcast_msg)) {
+					await ImManager.SendAsync (new v0_ReplyMsg { MsgId = 0, MsgIdShadow = _topic_msg.MsgIdShadow, Type = ReplyMsgType.ServerReject });
+					return;
+				}
+
+				// 判定是否存档
+				bool _store = true;
+				if (_store) {
+					// TODO 存数据库
+				}
+
+				// TODO 发送给接收者
+			} else if (_msg is v0_StatusUpdateMsg _stupd_msg) {
+
 			}
 		}
 	}

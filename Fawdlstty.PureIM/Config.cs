@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM {
 	public class Config {
+		public static long GetNewId () => DateTime.Now.Ticks;
+
 		/// <summary>在线消息缓存时间</summary>
 		public static TimeSpan OnlineMessageCache = TimeSpan.FromMinutes (1);
 
