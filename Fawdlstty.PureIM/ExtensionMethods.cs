@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Fawdlstty.PureIM.ImStructs.Message;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -34,31 +35,43 @@ namespace Fawdlstty.PureIM {
 		//	await _ws.MySendTextAsync (_uid, _o.ToString ());
 		//}
 
-		public static async Task MyCloseAsync (this WebSocket _ws) {
-			var _source = new CancellationTokenSource (TimeSpan.FromSeconds (1));
-			await _ws.CloseAsync (WebSocketCloseStatus.NormalClosure, null, _source.Token);
-		}
+		//public static async Task MyCloseAsync (this WebSocket _ws) {
+		//	var _source = new CancellationTokenSource (TimeSpan.FromSeconds (1));
+		//	await _ws.CloseAsync (WebSocketCloseStatus.NormalClosure, null, _source.Token);
+		//}
 
-		public static JToken ToJson (this object _o) {
-			JToken _content = _o switch {
-				null => null,
-				string _s => _s,
-				bool _b => _b,
-				sbyte _b => _b,
-				byte _b => _b,
-				short _s => _s,
-				ushort _us => _us,
-				int _i => _i,
-				uint _ui => _ui,
-				long _l => _l,
-				ulong _ul => _ul,
-				JObject _jo => _jo,
-				JArray _ja => _ja,
-				JToken _jt => _jt,
-				_ when _o.GetType ().IsAssignableTo (typeof (IEnumerable)) => JArray.FromObject (_o),
-				_ => JObject.FromObject (_o),
-			};
-			return _content;
+		//public static JToken ToJson (this object _o) {
+		//	JToken _content = _o switch {
+		//		null => null,
+		//		string _s => _s,
+		//		bool _b => _b,
+		//		sbyte _b => _b,
+		//		byte _b => _b,
+		//		short _s => _s,
+		//		ushort _us => _us,
+		//		int _i => _i,
+		//		uint _ui => _ui,
+		//		long _l => _l,
+		//		ulong _ul => _ul,
+		//		JObject _jo => _jo,
+		//		JArray _ja => _ja,
+		//		JToken _jt => _jt,
+		//		_ when _o.GetType ().IsAssignableTo (typeof (IEnumerable)) => JArray.FromObject (_o),
+		//		_ => JObject.FromObject (_o),
+		//	};
+		//	return _content;
+		//}
+
+		public static bool IsOnlineOnly (this MsgType _type) => (_type & MsgType.OnlineOnly) > 0;
+
+		public static async Task CloseAsync (this WebSocket _ws) {
+			if (_ws == null)
+				return;
+			if (_ws.CloseStatus.HasValue) {
+				var _csource = new CancellationTokenSource (TimeSpan.FromSeconds (1));
+				await _ws.CloseAsync (WebSocketCloseStatus.NormalClosure, null, _csource.Token);
+			}
+			_ws.Dispose ();
 		}
 	}
 }

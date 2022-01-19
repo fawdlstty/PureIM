@@ -48,30 +48,8 @@ namespace Fawdlstty.PureIM {
 						string _auth = _ctx.Request.Query ["auth"].ToString ();
 						// TODO check
 						using var _ws = await _ctx.WebSockets.AcceptWebSocketAsync ();
-						// TODO 看情况是否并入现有socket
-						var _client = new ImClient { WS = _ws, UserId = _userid };
-						await _client.Process ();
-						//try {
-						//	string _auth = _ctx.Request.Query ["auth"].ToString ();
-						//	var _key = new SymmetricSecurityKey (Encoding.UTF8.GetBytes ("ddIASHDFIUABSIDABDIAfafa"));
-						//	var _token_params = new TokenValidationParameters {
-						//		ValidateLifetime = true,
-						//		IssuerSigningKey = _key,
-						//		ValidateIssuer = false,
-						//		ValidateAudience = false,
-						//	};
-						//	var _claims = new JwtSecurityTokenHandler ().ValidateToken (_auth, _token_params, out SecurityToken _stoken);
-						//	var _uid = (from p in ((JwtSecurityToken) _stoken).Claims where p.Type == "uid" select long.Parse (p.Value)).First ();
-						//	string _ip = _ctx.Connection.RemoteIpAddress?.ToString () ?? "";
-						//	await ClientManager.RunConnect (_uid, _ws, _ip);
-						//} catch (Exception _ex) {
-						//	await Log.WriteAsync (_ex);
-						//	await _ws.MySendFailureAsync (-1, WsAllType.info, -1, "auth failed");
-						//	await _ws.MyCloseAsync ();
-						//}
-
-
-						// https://docs.microsoft.com/zh-cn/aspnet/core/fundamentals/websockets?view=aspnetcore-6.0
+						var _client = await ImManager.GetClientAsync (_userid);
+						await _client.ProcessConnect (_ws);
 					}
 					return;
 				}
