@@ -7,11 +7,14 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM.ImStructs.Message {
+	[Flags]
 	public enum MsgType {
-		Text		= 0x0,	// 文本信息
-		Binary		= 0x1,	// 二进制信息（音频文件、图片文件、视频文件、文档文件等）
-		Stream		= 0x2,	// 流信息
-		Command		= 0x3,	// 命令信息
+		Text		= 0x0,		// 文本信息
+		Binary		= 0x1,		// 二进制信息（音频文件、图片文件、视频文件、文档文件等）
+		Stream		= 0x2,		// 流信息
+		Command		= 0x3,		// 命令信息
+
+		OnlineOnly	= 0x10,		// 仅topic或broadcast使用，用户如果不在线则不发送
 	}
 
 
@@ -20,7 +23,7 @@ namespace Fawdlstty.PureIM.ImStructs.Message {
 	[MessagePack.Union (1, typeof (v0_PrivateMsg))]
 	[MessagePack.Union (2, typeof (v0_TopicMsg))]
 	[MessagePack.Union (3, typeof (v0_BroadcastMsg))]
-	[MessagePack.Union (3, typeof (v0_StatusUpdateMsg))]
+	[MessagePack.Union (4, typeof (v0_StatusUpdateMsg))]
 	public interface IImMsg {
 		public long MsgId { get; set; }
 		public long MsgIdShadow { get; set; }

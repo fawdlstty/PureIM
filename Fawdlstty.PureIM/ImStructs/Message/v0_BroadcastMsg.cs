@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM.ImStructs.Message {
 	[MessagePackObject]
-	public class v0_BroadcastMsg: IImMsg {
+	public class v0_BroadcastMsg: IImContentMsg {
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long MsgIdShadow { get; set; }
 		[Key (2)] public long FromUserId { get; set; }

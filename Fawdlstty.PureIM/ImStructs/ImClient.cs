@@ -128,14 +128,20 @@ namespace Fawdlstty.PureIM.ImStructs {
 						}
 					}
 				}
-			} else if (_msg is v0_PrivateMsg _priv_msg) {
+			} else if (_msg is IImContentMsg _cmsg) {
 				// 判定是否重复
 				bool _repeat = false;
 				if (_repeat)
 					return;
 
+				var (_accept, _receivers) = _cmsg switch {
+					v0_PrivateMsg _priv_msg => (ClientMsgFilter.CheckAccept (_priv_msg), new List<long> { _priv_msg.ToUserId }),
+					v0_TopicMsg _topic_msg => (ClientMsgFilter.CheckAccept (_topic_msg), new List<long> { /*TODO*/ }),
+					v0_BroadcastMsg _bdcast_msg => (ClientMsgFilter.CheckAccept (_bdcast_msg), new List<long> { /*TODO*/ }),
+				};
+
 				// 检查
-				if (!ClientMsgFilter.CheckAccept (_priv_msg)) {
+				if (!_accept) {
 					await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Reject);
 					return;
 				}
@@ -151,7 +157,8 @@ namespace Fawdlstty.PureIM.ImStructs {
 				}
 
 				// TODO 发送给接收者
-				await ImManager.SendAsync (_priv_msg.ToUserId, _priv_msg);
+				foreach (var _receiver in _receivers)
+					await ImManager.SendAsync (_receiver, _msg);
 			} else if (_msg is v0_TopicMsg _topic_msg) {
 				// 判定是否重复
 				bool _repeat = false;

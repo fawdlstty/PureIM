@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Fawdlstty.PureIM.ImStructs.Message {
 	[MessagePackObject]
-	public class v0_PrivateMsg: IImMsg {
+	public class v0_PrivateMsg: IImContentMsg {
 		// 由客户端发起时此项填0
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long MsgIdShadow { get; set; }
