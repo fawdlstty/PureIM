@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace PureIM {
 	public enum OnlineStatus { Offline, Online, TempOffline }
 
-	public class IMClient {
+	public class ImClient {
 		public long UserId { init; get; }
 		public OnlineStatus Status { get; private set; } = OnlineStatus.Offline;
 		private IImClientImpl ClientImpl { get; set; } = null;
@@ -151,7 +151,7 @@ namespace PureIM {
 
 				// 检查
 				var (_accept, _receivers) = _cmsg switch {
-					v0_PrivateMsg _priv_msg => (ClientMsgFilter.CheckAccept (_priv_msg), new List<long> { _priv_msg.ToUserId }),
+					v0_PrivateMsg _priv_msg => (ClientMsgFilter.CheckAccept (_priv_msg), new List<long> { _priv_msg.RecverUserId }),
 					v0_TopicMsg _topic_msg => (ClientMsgFilter.CheckAccept (_topic_msg), await ImManager.GetTopicUserIds (_topic_msg.TopicName, _topic_msg.Type.IsOnlineOnly ())),
 					v0_BroadcastMsg _bdcast_msg => (ClientMsgFilter.CheckAccept (_bdcast_msg), await ImManager.GetAllUserIds (_bdcast_msg.Type.IsOnlineOnly ())),
 					_ => (false, null),

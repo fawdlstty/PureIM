@@ -5,11 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Message\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="FreeSql.All" Version="3.0.100" />
     <PackageReference Include="MessagePack" Version="2.3.85" />
+    <PackageReference Include="MessagePackAnalyzer" Version="2.3.85" />
   </ItemGroup>
 
 </Project>
