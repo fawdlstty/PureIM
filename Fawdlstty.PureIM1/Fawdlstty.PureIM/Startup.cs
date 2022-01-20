@@ -50,6 +50,7 @@ namespace Fawdlstty.PureIM {
 						using var _ws = await _ctx.WebSockets.AcceptWebSocketAsync ();
 						var _client = await ImManager.GetClientAsync (_userid);
 						await _client.ProcessConnect (_ws);
+						await _ws.CloseAsync ();
 					}
 					return;
 				}

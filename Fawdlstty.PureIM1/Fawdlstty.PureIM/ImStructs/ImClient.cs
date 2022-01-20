@@ -68,7 +68,7 @@ namespace Fawdlstty.PureIM.ImStructs {
 			var _recv_data = new List<byte> ();
 			var _source = new CancellationTokenSource (TimeSpan.FromSeconds (10));
 			int _msg_size = 0;
-			while (!WS.CloseStatus.HasValue) {
+			while (!(WS?.CloseStatus.HasValue ?? true)) {
 				try {
 					var _result = await WS.ReceiveAsync (_buf, CancellationToken.None);
 					if (_result.MessageType != WebSocketMessageType.Text) { // _result.MessageType == WebSocketMessageType.Close
@@ -93,10 +93,10 @@ namespace Fawdlstty.PureIM.ImStructs {
 					}
 				} catch (Exception _ex) {
 					await Log.WriteAsync (_ex);
+					await WS.CloseAsync ();
 					break;
 				}
 			}
-			await WS.CloseAsync ();
 			WS = null;
 			Status = OnlineStatus.TempOffline;
 		}
@@ -150,13 +150,13 @@ namespace Fawdlstty.PureIM.ImStructs {
 				if (_repeat)
 					return;
 
+				// 检查
 				var (_accept, _receivers) = _cmsg switch {
 					v0_PrivateMsg _priv_msg => (ClientMsgFilter.CheckAccept (_priv_msg), new List<long> { _priv_msg.ToUserId }),
 					v0_TopicMsg _topic_msg => (ClientMsgFilter.CheckAccept (_topic_msg), await ImManager.GetTopicUserIds (_topic_msg.TopicName, _topic_msg.Type.IsOnlineOnly ())),
-					v0_BroadcastMsg _bdcast_msg => (ClientMsgFilter.CheckAccept (_bdcast_msg), new List<long> { /*TODO*/ }),
+					v0_BroadcastMsg _bdcast_msg => (ClientMsgFilter.CheckAccept (_bdcast_msg), await ImManager.GetAllUserIds (_bdcast_msg.Type.IsOnlineOnly ())),
+					_ => (false, null),
 				};
-
-				// 检查
 				if (!_accept) {
 					await SendReplyAsync (_msg.MsgId, _msg.MsgIdShadow, ReplyMsgType.Reject);
 					return;

@@ -67,7 +67,7 @@ namespace Fawdlstty.PureIM {
 		public static async Task CloseAsync (this WebSocket _ws) {
 			if (_ws == null)
 				return;
-			if (_ws.CloseStatus.HasValue) {
+			if (!_ws.CloseStatus.HasValue) {
 				var _csource = new CancellationTokenSource (TimeSpan.FromSeconds (1));
 				await _ws.CloseAsync (WebSocketCloseStatus.NormalClosure, null, _csource.Token);
 			}

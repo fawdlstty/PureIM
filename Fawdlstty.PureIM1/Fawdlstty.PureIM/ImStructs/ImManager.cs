@@ -51,6 +51,15 @@ namespace Fawdlstty.PureIM.ImStructs {
 			return _userids;
 		}
 
+		public static async Task<List<long>> GetAllUserIds (bool _only_online) {
+			if (_only_online) {
+				using (var _locker = await ClientsMutex.LockAsync ())
+					return Clients.Keys.ToList ();
+			} else {
+
+			}
+		}
+
 
 
 		// 客户端列表
