@@ -6,19 +6,17 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace PureIM.Message {
-	public enum MsgCmdType {
-		Add			= 0,
-		Remove		= 1,
-		Update		= 2,
-		Query		= 3,
+	public enum MsgCmdReplyType {
+		Failure		= 0,
+		Success		= 1,
 	}
 
 	[MessagePackObject]
-	public class v0_CmdMsg: IImMsg {
+	public class v0_CmdReplyMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long MsgIdShadow { get; set; }
-		[Key (2)] public MsgCmdType CmdType { get; set; }
-		[Key (3)] public string OptionName { get; set; }
+		[Key (2)] public MsgCmdReplyType CmdReplyType { get; set; }
+		[Key (3)] public string Info { get; set; }
 		[Key (4)] public byte[] Argument { get; set; }
 	}
 }

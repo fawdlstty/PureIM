@@ -18,20 +18,14 @@ namespace PureIM.Message {
 		Store       = 0x20,     // 是否存档
 	}
 
-	public enum MsgCmdType {
-		Add			= 0,
-		Remove		= 1,
-		Update		= 2,
-		Query		= 3,
-	}
-
 
 
 	[Union (0, typeof (v0_CmdMsg))]
-	[Union (1, typeof (v0_PrivateMsg))]
-	[Union (2, typeof (v0_TopicMsg))]
-	[Union (3, typeof (v0_ReplyMsg))]
-	[Union (4, typeof (v0_StatusUpdateMsg))]
+	[Union (1, typeof (v0_CmdReplyMsg))]
+	[Union (2, typeof (v0_PrivateMsg))]
+	[Union (3, typeof (v0_TopicMsg))]
+	[Union (4, typeof (v0_AcceptMsg))]
+	[Union (5, typeof (v0_StatusUpdateMsg))]
 	public interface IImMsg {
 		public long MsgId { get; set; }
 		public long MsgIdShadow { get; set; }

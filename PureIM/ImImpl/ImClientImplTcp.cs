@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PureIM.Tools;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -7,20 +8,19 @@ using System.Threading.Tasks;
 
 namespace PureIM.ImImpl {
 	class ImClientImplTcp: IImClientImpl {
-		public TcpClient Client { get; private set; }
-		public NetworkStream CStream { get; private set; }
-		private Func<byte[], Task> OnRecvCbAsync { get; set; }
+		public OnlineStatus Status { get; private set; } = OnlineStatus.Online;
+		private TcpClient Client { get; set; }
+		private NetworkStream CStream { get; set; }
 
-		public bool IsConnecting { get; private set; } = true;
-		public DateTime LastConnTime { get => IsConnecting ? DateTime.Now : _last_conn_time; }
+		public DateTime LastConnTime { get => Status.IsOnline () ? DateTime.Now : _last_conn_time; }
 		private DateTime _last_conn_time = DateTime.Now;
+		public Func<byte[], Task> OnRecvCbAsync { get; set; } = null;
 
 
 
-		public ImClientImplTcp (TcpClient _client, Func<byte[], Task> _on_recv_cb_async) {
+		public ImClientImplTcp (TcpClient _client) {
 			Client = _client;
 			CStream = _client.GetStream ();
-			OnRecvCbAsync = _on_recv_cb_async;
 			_ = Task.Run (async () => {
 				try {
 					byte[] _len_buf = new byte [4], _buf = new byte [4];
@@ -37,24 +37,32 @@ namespace PureIM.ImImpl {
 						while (_readed < _pkg_len)
 							_readed += await CStream.ReadAsync (_buf, _readed, _pkg_len - _readed);
 						//
+						while (OnRecvCbAsync == null)
+
 						await OnRecvCbAsync (_buf);
 					}
 				} catch (Exception) {
 				}
 				_last_conn_time = DateTime.Now;
-				IsConnecting = false;
+				Status = OnlineStatus.TempOffline;
 			});
 		}
 
 		public async Task<bool> WriteAsync (byte[] _bytes) {
 			try {
-				if (IsConnecting) {
+				if (Status.IsOnline ()) {
 					await CStream.WriteAsync (_bytes);
 					return true;
 				}
 			} catch (Exception) {
 			}
 			return false;
+		}
+
+		public Task CloseAsync () {
+			CStream.Close ();
+			Client.Close ();
+			return Task.CompletedTask;
 		}
 	}
 }

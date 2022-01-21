@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PureIM.Message {
-	public enum ReplyMsgType {
+	public enum AcceptMsgType {
 		Accept		= 0x1,	// 发送成功
 		DestAccept	= 0x2,	// 对方已接收
 		DestReaded	= 0x3,	// 对方已读
@@ -15,9 +15,9 @@ namespace PureIM.Message {
 
 
 	[MessagePackObject]
-	public class v0_ReplyMsg: IImMsg {
+	public class v0_AcceptMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long MsgIdShadow { get; set; }
-		[Key (2)] public ReplyMsgType Type { get; set; }
+		[Key (2)] public AcceptMsgType Type { get; set; }
 	}
 }

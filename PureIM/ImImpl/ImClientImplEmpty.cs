@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace PureIM.ImImpl {
 	class ImClientImplEmpty: IImClientImpl {
-		public bool IsConnecting => false;
+		public OnlineStatus Status { get; private set; } = OnlineStatus.Offline;
+		public DateTime LastConnTime => DateTime.Now - Config.OnlineMessageCache;
 
-		public DateTime LastConnTime => throw new NotImplementedException ();
-
-		public Task<bool> WriteAsync (byte[] _bytes) => throw new NotImplementedException ();
+		public Task<bool> WriteAsync (byte[] _bytes) => Task.FromResult (false);
+		public static IImClientImpl Inst { get; } = new ImClientImplEmpty ();
+		public Task CloseAsync () => Task.CompletedTask;
 	}
 }

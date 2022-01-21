@@ -10,7 +10,7 @@ namespace PureIM.Message {
 	public class v0_TopicMsg: IImContentMsg {
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long MsgIdShadow { get; set; }
-		[Key (2)] public string TopicName { get; set; }
+		[Key (2)] public long TopicId { get; set; }
 		[Key (3)] public long SenderUserId { get; set; }
 		[Key (4)] public MsgType Type { get; set; }
 		[Key (5)] public DateTime SendTime { get; set; }

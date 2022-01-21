@@ -7,7 +7,7 @@ namespace PureIM.Test {
 			Console.WriteLine ("Hello World!");
 			var _server = new ImServer ();
 			await _server.StartServerAsync ();
-			Console.WriteLine ("Hello World!");
+			Console.WriteLine ("Server Stop.");
 			Console.ReadKey ();
 		}
 	}
