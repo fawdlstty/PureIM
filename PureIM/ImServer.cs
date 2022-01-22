@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 
 namespace PureIM {
 	public class ImServer {
-		public bool IsRunning { get; private set; } = false;
+		public static bool IsRunning { get; private set; } = false;
 
-		public async Task StartServerAsync (ushort _port = 64250) {
+		public static async Task StartServerAsync (ushort _port = 64250) {
 			////var _ssock = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			////_ssock.Bind (new IPEndPoint (IPAddress.Parse (_ip), _port));
 			////_ssock.Listen ();
@@ -32,7 +32,7 @@ namespace PureIM {
 			IsRunning = false;
 		}
 
-		public static async Task Add (ImClient _client) {
+		public static async Task Add (ImServerClient _client) {
 			using (var _locker = await ClientsMutex.LockAsync ())
 				Clients.Add (_client.UserId, _client);
 		}
@@ -45,12 +45,12 @@ namespace PureIM {
 
 		public static async Task SendAsync (long _userid, IImMsg _msg) => await (await GetClientAsync (_userid)).SendAsync (_msg);
 
-		public static async Task<ImClient> GetClientAsync (long _userid) {
+		public static async Task<ImServerClient> GetClientAsync (long _userid) {
 			using (var _locker = await ClientsMutex.LockAsync ()) {
 				if (Clients.ContainsKey (_userid))
 					return Clients[_userid];
 			}
-			var _client = new ImClient (_userid);
+			var _client = new ImServerClient (_userid);
 			return _client;
 		}
 
@@ -83,12 +83,11 @@ namespace PureIM {
 		}
 
 		// 客户端列表
-		private static Dictionary<long, ImClient> Clients { get; set; } = new Dictionary<long, ImClient> ();
+		private static Dictionary<long, ImServerClient> Clients { get; set; } = new Dictionary<long, ImServerClient> ();
 		private static AsyncLocker ClientsMutex = new AsyncLocker ();
 
 		// 订阅列表
 		private static Dictionary<long, HashSet<long>> Subscriptions { get; set; } = new Dictionary<long, HashSet<long>> ();
-		public object IImClientImplTcp { get; private set; }
 
 		private static AsyncLocker SubscriptionsMutex = new AsyncLocker ();
 	}

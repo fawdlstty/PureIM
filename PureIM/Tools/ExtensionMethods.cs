@@ -12,5 +12,6 @@ namespace PureIM.Tools {
 		public static bool IsOffline (this OnlineStatus _status) => _status == OnlineStatus.Offline;
 		public static bool IsOnlineOnly (this MsgType _type) => (_type & MsgType.OnlineOnly) != 0;
 		public static bool IsStore (this MsgType _type) => (_type & MsgType.Store) != 0;
+		public static byte[] Serilize (this IImMsg _msg) => IImMsg.Serilize (_msg);
 	}
 }

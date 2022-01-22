@@ -11,6 +11,7 @@ namespace PureIM.ImImpl {
 
 		public Task<bool> WriteAsync (byte[] _bytes) => Task.FromResult (false);
 		public static IImClientImpl Inst { get; } = new ImClientImplEmpty ();
+		public Func<byte[], Task> OnRecvCbAsync { get; set; } = null;
 		public Task CloseAsync () => Task.CompletedTask;
 	}
 }

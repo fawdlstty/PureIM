@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace PureIM {
 	public enum OnlineStatus { Offline, Online, TempOffline }
 
-	class ImClient {
+	public class ImServerClient {
 		public long UserId { get; private set; } = -1;
 		private IImClientImpl ClientImpl { get; set; } = ImClientImplEmpty.Inst;
 
@@ -30,7 +30,7 @@ namespace PureIM {
 
 
 
-		public ImClient (long _userid) {
+		public ImServerClient (long _userid) {
 			UserId = _userid;
 			Task.Run (async () => {
 				await ImServer.Add (this);
@@ -60,6 +60,7 @@ namespace PureIM {
 		/// <param name="_msg"></param>
 		/// <returns></returns>
 		public async Task SendAsync (IImMsg _msg) {
+			ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache);
 			_ = ClientImpl.WriteAsync (_msg.Serilize ());
 			if (_msg is v0_AcceptMsg)
 				return;
@@ -68,6 +69,7 @@ namespace PureIM {
 		}
 
 		public async Task OnRecvAsync (byte[] _data) {
+			ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache);
 			var _msg = IImMsg.FromBytes (_data);
 			if (_msg is v0_AcceptMsg _reply_msg) {
 				using (var _locker = await SendCachesMutex.LockAsync ()) {

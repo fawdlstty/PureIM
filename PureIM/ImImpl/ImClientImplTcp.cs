@@ -23,13 +23,13 @@ namespace PureIM.ImImpl {
 			CStream = _client.GetStream ();
 			_ = Task.Run (async () => {
 				try {
-					byte[] _len_buf = new byte [4], _buf = new byte [4];
-					while (true) {
-						var _readed = 0;
+					byte[] _len_buf = new byte [4], _buf = _len_buf;
+					while (Client.Connected) {
+						int _readed = 0;
 						while (_readed < _len_buf.Length)
 							_readed += await CStream.ReadAsync (_len_buf, _readed, _len_buf.Length - _readed);
 						//
-						var _pkg_len = BitConverter.ToInt32 (_len_buf);
+						int _pkg_len = BitConverter.ToInt32 (_len_buf);
 						if (_pkg_len == 0)
 							continue;
 						_buf = _pkg_len != _buf.Length ? new byte[_pkg_len] : _buf;
@@ -38,7 +38,7 @@ namespace PureIM.ImImpl {
 							_readed += await CStream.ReadAsync (_buf, _readed, _pkg_len - _readed);
 						//
 						while (OnRecvCbAsync == null)
-
+							await Task.Delay (TimeSpan.FromMilliseconds (1));
 						await OnRecvCbAsync (_buf);
 					}
 				} catch (Exception) {

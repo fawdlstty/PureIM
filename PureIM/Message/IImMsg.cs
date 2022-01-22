@@ -34,13 +34,13 @@ namespace PureIM.Message {
 
 		private static MessagePackSerializerOptions Lz4Compress = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
 
-		public byte[] Serilize () {
-			var _ms = new MemoryStream ();
+		public static byte[] Serilize (IImMsg _msg) {
+			using var _ms = new MemoryStream ();
 			_ms.WriteByte (0);
 			_ms.WriteByte (0);
 			_ms.WriteByte (0);
 			_ms.WriteByte (0);
-			MessagePackSerializer.Serialize (_ms, this, Lz4Compress);
+			MessagePackSerializer.Serialize (_ms, _msg, Lz4Compress);
 			var _bytes = _ms.ToArray ();
 			BitConverter.GetBytes (_bytes.Length - 4).CopyTo (_bytes, 0);
 			return _bytes;
