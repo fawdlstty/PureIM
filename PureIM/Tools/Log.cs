@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace Fawdlstty.PureIM.Tools {
+namespace PureIM.Tools {
 	public class Log {
 		private static Channel<string> s_chan = Channel.CreateUnbounded<string> ();
 
@@ -36,7 +36,9 @@ namespace Fawdlstty.PureIM.Tools {
 		public static async Task WriteAsync (string _msg, [CallerFilePath] string _file = "", [CallerLineNumber] int _line = 0) {
 			// , [CallerMemberName] string _func = ""
 			_file = _file[(_file.LastIndexOfAny (new char[] { '/', '\\' }) + 1)..];
-			await s_chan.Writer.WriteAsync ($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}][{_file}:{_line}] {_msg}\n");
+			string _data = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}][{_file}:{_line}] {_msg}\n";
+			Console.Write (_data);
+			//await s_chan.Writer.WriteAsync (_data);
 		}
 
 		public static async Task WriteAsync (Exception _ex, [CallerFilePath] string _file = "", [CallerLineNumber] int _line = 0) {

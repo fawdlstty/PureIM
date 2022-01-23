@@ -34,7 +34,7 @@ namespace PureIM {
 			UserId = _userid;
 			Task.Run (async () => {
 				await ImServer.Add (this);
-				while (ClientImpl.Status.IsOnline () || ElapsedTime <= DateTime.Now) {
+				while (ClientImpl.Status.IsOnline () || ElapsedTime >= DateTime.Now) {
 					DateTime _next_process_time;
 					using (var _locker = await SendCachesMutex.LockAsync ()) {
 						if (ClientImpl.Status.IsOnline () && SendCaches.Any () && SendCaches[0]._pstime <= DateTime.Now) {
@@ -47,9 +47,9 @@ namespace PureIM {
 					if (_next_process_time > DateTime.Now) {
 						await Task.Delay (_next_process_time - DateTime.Now);
 					}
-					if (ClientImpl.Status.IsTempOffline () && DateTime.Now - ClientImpl.LastConnTime >= Config.OnlineMessageCache)
-						ClientImpl = ImClientImplEmpty.Inst;
 				}
+				await Log.WriteAsync ($"connect close");
+				ClientImpl = ImClientImplEmpty.Inst;
 				await ImServer.Remove (UserId);
 			});
 		}

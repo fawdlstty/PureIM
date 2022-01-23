@@ -31,7 +31,8 @@ namespace PureIM {
 						var auth_str = Encoding.UTF8.GetString (_cmsg.Attachment);
 						if (auth_str.StartsWith ("[forcelogin]")) {
 							if (long.TryParse (auth_str[12..], out var _userid)) {
-								var _client = ImServer.GetClientAsync (_userid);
+								var _client = await ImServer.GetClientAsync (_userid);
+								return;
 							}
 						}
 					} else {

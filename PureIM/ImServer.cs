@@ -23,8 +23,14 @@ namespace PureIM {
 			IsRunning = true;
 			while (true) {
 				try {
-					using var _rclient = await _listener.AcceptTcpClientAsync ();
-					var _client_impl = new ImClientImplTcp (_rclient);
+					var _rclient = await _listener.AcceptTcpClientAsync ();
+					await Log.WriteAsync ($"Accept new client[{_rclient.Client.RemoteEndPoint}]");
+
+					_ = Task.Run (async () => {
+						var _client_impl = new ImClientImplTcp (_rclient);
+						var guest_client = new ImServerClientGuest (_client_impl);
+						await _client_impl.RunAsync ();
+					});
 				} catch (SocketException) {
 					break;
 				}
