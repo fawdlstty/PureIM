@@ -18,23 +18,21 @@ namespace PureIM {
 				await Log.WriteAsync ($"start im server(tcp) failure because not set message filter.");
 				return;
 			}
+			_ = Task.Run (Log.ProcessAsync);
 			await Log.WriteAsync ($"start im server(tcp) in port[{_port}]");
 			var _listener = new TcpListener (IPAddress.Any, _port);
 			_listener.Start ();
 			TcpServerIsRunning = true;
-			try {
-				while (true) {
-					var _rclient = await _listener.AcceptTcpClientAsync ();
+			while (true) {
+				var _rclient = await _listener.AcceptTcpClientAsync ();
 
-					_ = Task.Run (async () => {
-						var _client_impl = new ImClientImplTcp (_rclient);
-						await Log.WriteAsync ($"accept tcp connect from {_client_impl.ClientAddr}");
-						var _guest_client = new ImServerClientGuest (_client_impl);
-						await _client_impl.RunAsync ();
-						await Log.WriteAsync ($"{_client_impl.UserDesp} disconnect.");
-					});
-				}
-			} catch (SocketException) {
+				_ = Task.Run (async () => {
+					var _client_impl = new ImClientImplTcp (_rclient);
+					await Log.WriteAsync ($"accept tcp connect from {_client_impl.ClientAddr}");
+					var _guest_client = new ImServerClientGuest (_client_impl);
+					await _client_impl.RunAsync ();
+					await Log.WriteAsync ($"{_client_impl.UserDesp} disconnect.");
+				});
 			}
 			TcpServerIsRunning = false;
 		}

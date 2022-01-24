@@ -35,13 +35,13 @@ namespace PureIM.Message {
 			return $"v0_CmdMsg {{ MsgId={MsgId}, Seq={Seq}, CmdType={CmdType}, Option={Option}, Attachment={_attach_str} }}";
 		}
 
-		public static v0_CmdMsg Offline (string _reason) {
-			return new v0_CmdMsg { MsgId = 0, Seq = 0, CmdType = MsgCmdType.Auth, Option = "offline", Attachment = Encoding.UTF8.GetBytes (_reason) };
+		public static v0_CmdMsg Offline (long _seq, string _reason) {
+			return new v0_CmdMsg { MsgId = 0, Seq = _seq, CmdType = MsgCmdType.Auth, Option = "offline", Attachment = Encoding.UTF8.GetBytes (_reason) };
 		}
 
 		// 当前仅客户端测试使用
-		public static byte[] LoginForce (long _userid) {
-			var _cmd_reply_msg = new v0_CmdMsg { MsgId = 0, Seq = 0, CmdType = MsgCmdType.Auth, Option = "login", Attachment = Encoding.UTF8.GetBytes ($"[forcelogin]{_userid}") };
+		public static byte[] LoginForce (long _seq, long _userid) {
+			var _cmd_reply_msg = new v0_CmdMsg { MsgId = 0, Seq = _seq, CmdType = MsgCmdType.Auth, Option = "login", Attachment = Encoding.UTF8.GetBytes ($"[forcelogin]{_userid}") };
 			return _cmd_reply_msg.Serilize ();
 		}
 	}
