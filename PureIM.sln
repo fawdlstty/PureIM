@@ -5,9 +5,15 @@ VisualStudioVersion = 16.0.31424.327
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PureIM", "PureIM\PureIM.csproj", "{3C3074A2-4F49-4595-93B2-B04B1A1F2A11}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PureIM.TestServer", "PureIM.TestServer\PureIM.TestServer.csproj", "{6D313CD7-DD27-4D85-B733-5250724959F6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PureIM.TestServer", "PureIM.TestServer\PureIM.TestServer.csproj", "{6D313CD7-DD27-4D85-B733-5250724959F6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PureIM.TestClient", "PureIM.TestClient\PureIM.TestClient.csproj", "{3716BA74-CBD4-400B-AE74-E07D2C25751F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PureIM.TestClient", "PureIM.TestClient\PureIM.TestClient.csproj", "{3716BA74-CBD4-400B-AE74-E07D2C25751F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{85FAEEA1-F3C9-47C4-BBD1-630EB8786870}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

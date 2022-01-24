@@ -9,7 +9,7 @@ namespace PureIM.Message {
 		Accept          = 0x1,  // 发送成功
 		DestAccept      = 0x2,  // 对方已接收
 		DestReaded      = 0x3,  // 对方已读
-								//Rejection		= 0x4,	// 临时拒收
+		//Rejection		= 0x4,	// 临时拒收
 	}
 
 
@@ -17,7 +17,11 @@ namespace PureIM.Message {
 	[MessagePackObject]
 	public class v0_StatusUpdateMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
-		[Key (1)] public long MsgIdShadow { get; set; }
+		[Key (1)] public long Seq { get; set; }
 		[Key (2)] public StatusMsgType Type { get; set; }
+
+
+
+		public string SerilizeLog () => $"v0_AcceptMsg {{ MsgId={MsgId}, Type={Type} }}";
 	}
 }

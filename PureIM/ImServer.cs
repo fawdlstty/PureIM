@@ -1,4 +1,4 @@
-﻿using PureIM.ImImpl;
+﻿using PureIM.ServerClientImpl;
 using PureIM.Message;
 using PureIM.Tools;
 using System;
@@ -10,48 +10,49 @@ using System.Threading.Tasks;
 
 namespace PureIM {
 	public class ImServer {
-		public static bool IsRunning { get; private set; } = false;
+		public static IMessageFilter Filter { get; set; } = null;
+		public static bool TcpServerIsRunning { get; private set; } = false;
 
-		public static async Task StartServerAsync (ushort _port = 64250) {
-			////var _ssock = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			////_ssock.Bind (new IPEndPoint (IPAddress.Parse (_ip), _port));
-			////_ssock.Listen ();
-			////var _csock = _ssock.AcceptAsync ();
+		public static async Task StartTcpServerAsync (ushort _port = 64250) {
+			if (Filter == null) {
+				await Log.WriteAsync ($"start im server(tcp) failure because not set message filter.");
+				return;
+			}
+			await Log.WriteAsync ($"start im server(tcp) in port[{_port}]");
 			var _listener = new TcpListener (IPAddress.Any, _port);
 			_listener.Start ();
-			//_ = Task.Run (async () => { await Task.Delay (TimeSpan.FromSeconds (10)); _listener.Stop (); });
-			IsRunning = true;
-			while (true) {
-				try {
+			TcpServerIsRunning = true;
+			try {
+				while (true) {
 					var _rclient = await _listener.AcceptTcpClientAsync ();
-					await Log.WriteAsync ($"Accept new client[{_rclient.Client.RemoteEndPoint}]");
 
 					_ = Task.Run (async () => {
 						var _client_impl = new ImClientImplTcp (_rclient);
-						var guest_client = new ImServerClientGuest (_client_impl);
+						await Log.WriteAsync ($"accept tcp connect from {_client_impl.ClientAddr}");
+						var _guest_client = new ImServerClientGuest (_client_impl);
 						await _client_impl.RunAsync ();
+						await Log.WriteAsync ($"{_client_impl.UserDesp} disconnect.");
 					});
-				} catch (SocketException) {
-					break;
 				}
+			} catch (SocketException) {
 			}
-			IsRunning = false;
+			TcpServerIsRunning = false;
 		}
 
-		public static async Task Add (ImServerClient _client) {
+		internal static async Task Add (ImServerClient _client) {
 			using (var _locker = await ClientsMutex.LockAsync ())
 				Clients.Add (_client.UserId, _client);
 		}
-		public static async Task Remove (long _userid) {
+		internal static async Task Remove (long _userid) {
 			using (var _locker = await ClientsMutex.LockAsync ()) {
 				if (Clients.ContainsKey (_userid))
 					Clients.Remove (_userid);
 			}
 		}
 
-		public static async Task SendAsync (long _userid, IImMsg _msg) => await (await GetClientAsync (_userid)).SendAsync (_msg);
+		public static async Task SendAsync (long _userid, IImMsg _msg) => await (await GetClientAsync (_userid)).SendAndLoggingAsync (_msg);
 
-		public static async Task<ImServerClient> GetClientAsync (long _userid) {
+		internal static async Task<ImServerClient> GetClientAsync (long _userid) {
 			using (var _locker = await ClientsMutex.LockAsync ()) {
 				if (Clients.ContainsKey (_userid))
 					return Clients[_userid];

@@ -28,7 +28,7 @@ namespace PureIM.Message {
 	[Union (5, typeof (v0_StatusUpdateMsg))]
 	public interface IImMsg {
 		public long MsgId { get; set; }
-		public long MsgIdShadow { get; set; }
+		public long Seq { get; set; }
 
 
 
@@ -46,5 +46,7 @@ namespace PureIM.Message {
 			return _bytes;
 		}
 		public static IImMsg FromBytes (byte[] _raw_data) => MessagePackSerializer.Deserialize<IImMsg> (_raw_data, Lz4Compress);
+
+		public string SerilizeLog ();
 	}
 }

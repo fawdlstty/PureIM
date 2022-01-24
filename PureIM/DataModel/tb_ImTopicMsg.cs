@@ -7,11 +7,11 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace PureIM.DataModel {
-	[Index ("uk_{tablename}", "MsgIdShadow,SenderUserId", IsUnique = true)]
+	[Index ("uk_{tablename}", "Seq,SenderUserId", IsUnique = true)]
 	public class tb_ImTopicMsg {
 		[Column (IsIdentity = true, IsPrimary = true)]
 		public long MsgId { get; set; }
-		public long MsgIdShadow { get; set; }
+		public long Seq { get; set; }
 		public long SenderUserId { get; set; }
 		public long TopicId { get; set; }
 		public MsgType Type { get; set; }

@@ -36,9 +36,11 @@ namespace PureIM.Tools {
 		public static async Task WriteAsync (string _msg, [CallerFilePath] string _file = "", [CallerLineNumber] int _line = 0) {
 			// , [CallerMemberName] string _func = ""
 			_file = _file[(_file.LastIndexOfAny (new char[] { '/', '\\' }) + 1)..];
-			string _data = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}][{_file}:{_line}] {_msg}\n";
-			Console.Write (_data);
-			//await s_chan.Writer.WriteAsync (_data);
+			if (Config.DebugLog) {
+				Console.Write ($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}][{_file}:{_line}] {_msg}{Environment.NewLine}");
+			} else {
+				await s_chan.Writer.WriteAsync ($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {_msg}{Environment.NewLine}");
+			}
 		}
 
 		public static async Task WriteAsync (Exception _ex, [CallerFilePath] string _file = "", [CallerLineNumber] int _line = 0) {

@@ -6,21 +6,30 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PureIM.ImImpl {
+namespace PureIM.ServerClientImpl {
 	class ImClientImplTcp: IImClientImpl {
 		public OnlineStatus Status { get; private set; } = OnlineStatus.Online;
 		private TcpClient Client { get; set; }
 		private NetworkStream CStream { get; set; }
+		private static byte[] PingBuf { get; } = new byte[4] { 0, 0, 0, 0 };
 
 		public DateTime LastConnTime { get => Status.IsOnline () ? DateTime.Now : _last_conn_time; }
 		private DateTime _last_conn_time = DateTime.Now;
 		public Func<byte[], Task> OnRecvCbAsync { get; set; } = null;
+		public string UserDesp {
+			get => _user_desp == "" ? ClientAddr : _user_desp;
+			set => _user_desp = value;
+		}
+		private string _user_desp = "";
+		public string ClientAddr { get => _client_addr; }
+		private string _client_addr = "";
 
 
 
 		public ImClientImplTcp (TcpClient _client) {
 			Client = _client;
 			CStream = _client.GetStream ();
+			_client_addr = $"client[{Client.Client.RemoteEndPoint}]";
 		}
 
 		public async Task RunAsync () {
@@ -32,9 +41,11 @@ namespace PureIM.ImImpl {
 						_readed += await CStream.ReadAsync (_len_buf, _readed, _len_buf.Length - _readed);
 					//
 					int _pkg_len = BitConverter.ToInt32 (_len_buf);
-					if (_pkg_len == 0)
+					if (_pkg_len == 0) {
+						await SendAsync (PingBuf);
 						continue;
-					await Log.WriteAsync ($"read {_pkg_len} bytes from client[{Client.Client.RemoteEndPoint}]");
+					}
+					//await Log.WriteAsync ($"read {_pkg_len} bytes from {UserDesp}");
 					_buf = _pkg_len != _buf.Length ? new byte[_pkg_len] : _buf;
 					_readed = 0;
 					while (_readed < _pkg_len)
@@ -42,17 +53,17 @@ namespace PureIM.ImImpl {
 					//
 					while (OnRecvCbAsync == null)
 						await Task.Delay (TimeSpan.FromMilliseconds (1));
-					await Log.WriteAsync ($"process packet from client[{Client.Client.RemoteEndPoint}]");
+					//await Log.WriteAsync ($"process packet from {UserDesp}");
 					await OnRecvCbAsync (_buf);
 				}
 			} catch (Exception) {
 			}
 			_last_conn_time = DateTime.Now;
 			Status = OnlineStatus.TempOffline;
-			await Log.WriteAsync ($"connect temp offline");
+			await CloseAsync ();
 		}
 
-		public async Task<bool> WriteAsync (byte[] _bytes) {
+		public async Task<bool> SendAsync (byte[] _bytes) {
 			try {
 				if (Status.IsOnline ()) {
 					await CStream.WriteAsync (_bytes);
@@ -63,10 +74,11 @@ namespace PureIM.ImImpl {
 			return false;
 		}
 
-		public Task CloseAsync () {
+		public async Task CloseAsync () {
 			CStream.Close ();
+			await CStream.DisposeAsync ();
 			Client.Close ();
-			return Task.CompletedTask;
+			await CStream.DisposeAsync ();
 		}
 	}
 }

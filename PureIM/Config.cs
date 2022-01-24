@@ -16,5 +16,17 @@ namespace PureIM {
 
 		/// <summary>消息重复发送间隔</summary>
 		public static TimeSpan MessageResend = TimeSpan.FromSeconds (10);
+
+		/// <summary>控制台输出+源码文件名:行数</summary>
+		public static bool DebugLog = true;
+
+		/// <summary>接收者是否需要在用户已读后回复已读</summary>
+		public static bool EnableReceiverReaded = true;
+
+		/// <summary>接收者收到信息后是否通知发布者</summary>
+		public static bool EnableReceiverReceivedNotify = true;
+
+		/// <summary>接收者已读信息后是否通知发布者</summary>
+		public static bool EnableReceiverReadedNotify = true;
 	}
 }

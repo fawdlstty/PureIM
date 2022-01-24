@@ -17,7 +17,11 @@ namespace PureIM.Message {
 	[MessagePackObject]
 	public class v0_AcceptMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
-		[Key (1)] public long MsgIdShadow { get; set; }
+		[Key (1)] public long Seq { get; set; }
 		[Key (2)] public AcceptMsgType Type { get; set; }
+
+
+
+		public string SerilizeLog () => $"v0_AcceptMsg {{ MsgId={MsgId}, Type={Type} }}";
 	}
 }

@@ -18,15 +18,30 @@ namespace PureIM.Message {
 	[MessagePackObject]
 	public class v0_CmdMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
-		[Key (1)] public long MsgIdShadow { get; set; }
+		[Key (1)] public long Seq { get; set; }
 		[Key (2)] public MsgCmdType CmdType { get; set; }
 		[Key (3)] public string Option { get; set; }
 		[Key (4)] public byte[] Attachment { get; set; }
 
 
 
-		public static byte[] LoginForce () {
-			var _cmd_reply_msg = new v0_CmdMsg { MsgId = 0, MsgIdShadow = 0, CmdType = MsgCmdType.Auth, Option = "login", Attachment = Encoding.UTF8.GetBytes ("[forcelogin]1") };
+		public string SerilizeLog () {
+			string _attach_str = Option switch {
+				"login" => Encoding.UTF8.GetString (Attachment),
+				"offline" => Encoding.UTF8.GetString (Attachment),
+				_ when Attachment == null => "(null)",
+				_ => "binary data...",
+			};
+			return $"v0_CmdMsg {{ MsgId={MsgId}, Seq={Seq}, CmdType={CmdType}, Option={Option}, Attachment={_attach_str} }}";
+		}
+
+		public static v0_CmdMsg Offline (string _reason) {
+			return new v0_CmdMsg { MsgId = 0, Seq = 0, CmdType = MsgCmdType.Auth, Option = "offline", Attachment = Encoding.UTF8.GetBytes (_reason) };
+		}
+
+		// 当前仅客户端测试使用
+		public static byte[] LoginForce (long _userid) {
+			var _cmd_reply_msg = new v0_CmdMsg { MsgId = 0, Seq = 0, CmdType = MsgCmdType.Auth, Option = "login", Attachment = Encoding.UTF8.GetBytes ($"[forcelogin]{_userid}") };
 			return _cmd_reply_msg.Serilize ();
 		}
 	}

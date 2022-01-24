@@ -6,7 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace PureIM {
-	public class ClientMsgFilter {
-		public static Func<IImMsg, bool> CheckAccept = (_msg) => true;
+	public interface IMessageFilter {
+		public Task<long> Login (byte[] _data);
+
+		public Task<bool> CheckAccept (IImMsg _msg);
 	}
 }
