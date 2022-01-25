@@ -21,11 +21,10 @@ namespace PureIM.Message {
 
 
 	[Union (0, typeof (v0_CmdMsg))]
-	[Union (1, typeof (v0_CmdReplyMsg))]
+	[Union (1, typeof (v0_ReplyMsg))]
 	[Union (2, typeof (v0_PrivateMsg))]
 	[Union (3, typeof (v0_TopicMsg))]
-	[Union (4, typeof (v0_AcceptMsg))]
-	[Union (5, typeof (v0_StatusUpdateMsg))]
+	[Union (4, typeof (v0_StatusUpdateMsg))]
 	public interface IImMsg {
 		public long MsgId { get; set; }
 		public long Seq { get; set; }

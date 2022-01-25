@@ -11,12 +11,6 @@ namespace PureIM {
 		/// <summary>在线消息缓存时间，默认1min</summary>
 		public static TimeSpan OnlineMessageCache = TimeSpan.FromMinutes (1);
 
-		/// <summary>消息发送超时，默认10s</summary>
-		public static TimeSpan MessageTimeout = TimeSpan.FromSeconds (10);
-
-		/// <summary>消息重复发送间隔，默认10s</summary>
-		public static TimeSpan MessageResend = TimeSpan.FromSeconds (10);
-
 		/// <summary>控制台输出+源码文件名:行数</summary>
 		public static bool DebugLog = true;
 

@@ -21,8 +21,8 @@ namespace PureIM.TestClient {
 		}
 
 		static void Main (string[] args) {
-			Console.WriteLine ("connect 100000 counts to 127.0.0.1 ...");
-			for (int i = 1; i <= 100000; ++i) {
+			Console.WriteLine ("connect 10000 counts to 127.0.0.1 ...");
+			for (int i = 1; i <= 10000; ++i) {
 				int _t = i;
 				Func<Task> _f = async () => { await _start_one (_t); };
 				_ = Task.Run (_f);

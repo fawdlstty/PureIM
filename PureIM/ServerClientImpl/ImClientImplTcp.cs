@@ -16,6 +16,7 @@ namespace PureIM.ServerClientImpl {
 		public DateTime LastConnTime { get => Status.IsOnline () ? DateTime.Now : _last_conn_time; }
 		private DateTime _last_conn_time = DateTime.Now;
 		public Func<byte[], Task> OnRecvCbAsync { get; set; } = null;
+		public Func<Task> OnCloseAsync { get; set; } = null;
 		public string UserDesp {
 			get => _user_desp == "" ? ClientAddr : _user_desp;
 			set => _user_desp = value;
@@ -60,7 +61,6 @@ namespace PureIM.ServerClientImpl {
 			}
 			_last_conn_time = DateTime.Now;
 			Status = OnlineStatus.TempOffline;
-			await CloseAsync ();
 		}
 
 		public async Task<bool> SendAsync (byte[] _bytes) {

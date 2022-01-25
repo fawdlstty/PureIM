@@ -10,6 +10,7 @@ namespace PureIM.ServerClientImpl {
 		public DateTime LastConnTime => DateTime.Now - Config.OnlineMessageCache;
 		public static IImClientImpl Inst { get; } = new ImClientImplNone ();
 		public Func<byte[], Task> OnRecvCbAsync { get; set; } = null;
+		public Func<Task> OnCloseAsync { get; set; } = null;
 		public string UserDesp { get; set; }
 		public string ClientAddr { get => "unknown"; }
 

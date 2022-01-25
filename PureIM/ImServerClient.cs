@@ -16,37 +16,22 @@ namespace PureIM {
 		private IImClientImpl ClientImpl { get; set; } = ImClientImplNone.Inst;
 		private long Seq = 0;
 
-		/// <summary>
-		/// WS断开连接后赋值，用于确定超时后发送状态（此对象）的存在时间
-		/// </summary>
-		private DateTime ElapsedTime { get; set; } = DateTime.Now.Add (Config.OnlineMessageCache);
+		///// <summary>超时后发送状态（此对象）的存在时间</summary>
+		//private DateTime ElapsedTime {
+		//	get {
+		//		if (ClientImpl.Status.IsOnline ()) {
+		//			return DateTime.Now.Add (Config.OnlineMessageCache);
+		//		} else if (SendCaches.Count == 0 && RecvCaches.Count == 0) {
+		//			return DateTime.Now.AddMilliseconds (-1);
+		//		} else {
+		//			if (SendCaches.Count > 0 && RecvCaches.Count > 0)
+		//		}
+		//	}
+		//}
 
 		// 发送状态缓存
 		private List<(IImMsg _msg, DateTime _pstime)> SendCaches = new List<(IImMsg _msg, DateTime _pstime)> ();
 		private AsyncLocker SendCachesMutex = new AsyncLocker ();
-		private async Task<IImMsg> GetCacheItemAsync (DateTime _earlier_than) {
-			using var _locker = await SendCachesMutex.LockAsync ();
-			if (SendCaches.Count > 0 && SendCaches[0]._pstime <= _earlier_than) {
-				var _ret = SendCaches[0]._msg;
-				SendCaches.RemoveAt (0);
-				return _ret;
-			}
-			return null;
-		}
-
-		private async Task<TimeSpan?> GetNextCacheTimeSpanAsync () {
-			using (var _locker = await SendCachesMutex.LockAsync ()) {
-				var _now = DateTime.Now;
-				if (SendCaches.Count > 0) {
-					// 避免上面几行运行太过缓慢导致等待负数时间，此处再判断一次
-					if (SendCaches[0]._pstime > _now)
-						return SendCaches[0]._pstime - _now;
-				} else {
-					return Config.MessageResend;
-				}
-			}
-			return null;
-		}
 
 		// 接收状态缓存 （已接收的信息）
 		private List<(long _msgid, DateTime _pstime)> RecvCaches = new List<(long _msgid, DateTime _pstime)> ();
@@ -56,35 +41,31 @@ namespace PureIM {
 
 		public ImServerClient (long _userid) {
 			UserId = _userid;
-			Task.Run (async () => {
-				await ImServer.Add (this);
-				while (ElapsedTime >= DateTime.Now) {
-					if (ClientImpl.Status.IsOnline ()) {
-						// 如果在线
-
-						// 延续超时时长
-						ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache + Config.MessageResend);
-
-						// 重发缓存信息
-						IImMsg _msg;
-						while ((_msg = await GetCacheItemAsync (DateTime.Now - Config.MessageResend)) != null)
-							_ = SendAsync (_msg);
-					} else {
-						// 如果离线
-
-						// 清理超时信息
-						while ((await GetCacheItemAsync (DateTime.Now - Config.OnlineMessageCache)) != null);
-					}
-
-					// 等待下一个数据包处理时间
-					var _wait = await GetNextCacheTimeSpanAsync ();
-					if (_wait != null)
-						await Task.Delay (_wait.Value);
-				}
-				await Log.WriteAsync ($"{ClientImpl.UserDesp} connect clear.");
-				ClientImpl = ImClientImplNone.Inst;
-				await ImServer.Remove (UserId);
-			});
+			//Task.Run (async () => {
+			//	await ImServer.Add (this);
+			//	while (ElapsedTime >= DateTime.Now) {
+			//		if (ClientImpl.Status.IsOnline ()) {
+			//			// 如果在线
+			//			// 延续超时时长
+			//			ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache + Config.MessageResend);
+			//			// 重发缓存信息
+			//			IImMsg _msg;
+			//			while ((_msg = await GetCacheItemAsync (DateTime.Now - Config.MessageResend)) != null)
+			//				_ = SendAsync (_msg);
+			//		} else {
+			//			// 如果离线
+			//			// 清理超时信息
+			//			while ((await GetCacheItemAsync (DateTime.Now - Config.OnlineMessageCache)) != null);
+			//		}
+			//		// 等待下一个数据包处理时间
+			//		var _wait = await GetNextCacheTimeSpanAsync ();
+			//		if (_wait != null)
+			//			await Task.Delay (_wait.Value);
+			//	}
+			//	await Log.WriteAsync ($"{ClientImpl.UserDesp} connect clear.");
+			//	ClientImpl = ImClientImplNone.Inst;
+			//	await ImServer.Remove (UserId);
+			//});
 		}
 
 		public async Task SetClientImpl (IImClientImpl _client_impl, long _seq) {
@@ -99,7 +80,7 @@ namespace PureIM {
 			ClientImpl = _client_impl;
 			ClientImpl.OnRecvCbAsync = OnRecvAsync;
 			ClientImpl.UserDesp = $"user[{UserId}]";
-			await SendAndLoggingAsync (v0_CmdReplyMsg.LoginSuccess (_seq));
+			await SendAndLoggingAsync (v0_ReplyMsg.LoginSuccess (_seq));
 		}
 
 		/// <summary>
@@ -108,11 +89,10 @@ namespace PureIM {
 		/// <param name="_msg"></param>
 		/// <returns></returns>
 		public async Task SendAsync (IImMsg _msg) {
-			ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache);
 			_ = ClientImpl.SendAsync (_msg.Serilize ());
 
 			// 回复类信息不加入缓存，没送达直接抛弃
-			if (_msg is v0_AcceptMsg || _msg is v0_CmdReplyMsg)
+			if (_msg is v0_ReplyMsg)
 				return;
 			using (var _locker = await SendCachesMutex.LockAsync ())
 				SendCaches.Add ((_msg, DateTime.Now));
@@ -124,10 +104,9 @@ namespace PureIM {
 		}
 
 		public async Task OnRecvAsync (byte[] _data) {
-			ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache);
 			var _msg = IImMsg.FromBytes (_data);
 			await Log.WriteAsync ($"{ClientImpl.UserDesp} -> server: {_msg.SerilizeLog ()}");
-			if (_msg is v0_AcceptMsg || _msg is v0_CmdReplyMsg) {
+			if (_msg is v0_ReplyMsg) {
 				using var _locker = await SendCachesMutex.LockAsync ();
 				for (int i = 0; i < SendCaches.Count; ++i) {
 					if (SendCaches[i]._msg.MsgId == _msg.MsgId && SendCaches[i]._msg.Seq == _msg.Seq) {

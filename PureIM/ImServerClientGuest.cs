@@ -27,7 +27,7 @@ namespace PureIM {
 			long _seq = -1;
 			ClientImpl.OnRecvCbAsync = null;
 			Func<string, Task> _failure_cb = async _err => {
-				var _reply = v0_CmdReplyMsg.Failure (_seq, _err);
+				var _reply = v0_ReplyMsg.Failure (_seq, _err);
 				await Log.WriteAsync ($"server -> {ClientImpl.ClientAddr}: {_reply.SerilizeLog ()}");
 				await ClientImpl.SendAsync (_reply.Serilize ());
 			};

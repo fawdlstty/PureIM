@@ -31,20 +31,21 @@ namespace PureIM {
 					await Log.WriteAsync ($"accept tcp connect from {_client_impl.ClientAddr}");
 					var _guest_client = new ImServerClientGuest (_client_impl);
 					await _client_impl.RunAsync ();
+					await _client_impl.CloseAsync ();
 					await Log.WriteAsync ($"{_client_impl.UserDesp} disconnect.");
 				});
 			}
 			TcpServerIsRunning = false;
 		}
 
-		internal static async Task Add (ImServerClient _client) {
+		internal static async Task AddTemp (ImServerClient _client) {
 			using (var _locker = await ClientsMutex.LockAsync ())
-				Clients.Add (_client.UserId, _client);
+				ClientsOnline.Add (_client.UserId, _client);
 		}
 		internal static async Task Remove (long _userid) {
 			using (var _locker = await ClientsMutex.LockAsync ()) {
-				if (Clients.ContainsKey (_userid))
-					Clients.Remove (_userid);
+				if (ClientsOnline.ContainsKey (_userid))
+					ClientsOnline.Remove (_userid);
 			}
 		}
 
@@ -52,8 +53,8 @@ namespace PureIM {
 
 		internal static async Task<ImServerClient> GetClientAsync (long _userid) {
 			using (var _locker = await ClientsMutex.LockAsync ()) {
-				if (Clients.ContainsKey (_userid))
-					return Clients[_userid];
+				if (ClientsOnline.ContainsKey (_userid))
+					return ClientsOnline[_userid];
 			}
 			var _client = new ImServerClient (_userid);
 			return _client;
@@ -64,7 +65,7 @@ namespace PureIM {
 				// 广播消息
 				if (_only_online) {
 					using (var _locker = await ClientsMutex.LockAsync ())
-						return Clients.Keys.ToList ();
+						return ClientsOnline.Keys.ToList ();
 				} else {
 					return await DataStorer.GetAllUserIds ();
 				}
@@ -80,7 +81,7 @@ namespace PureIM {
 				}
 				if (_only_online) {
 					using (var _locker = await ClientsMutex.LockAsync ()) {
-						_userids = (from p in _userids where Clients.ContainsKey (p) select p).ToList ();
+						_userids = (from p in _userids where ClientsOnline.ContainsKey (p) select p).ToList ();
 					}
 				}
 				return _userids;
@@ -88,7 +89,7 @@ namespace PureIM {
 		}
 
 		// 客户端列表
-		private static Dictionary<long, ImServerClient> Clients { get; set; } = new Dictionary<long, ImServerClient> ();
+		private static Dictionary<long, ImServerClient> ClientsOnline { get; set; } = new Dictionary<long, ImServerClient> ();
 		private static AsyncLocker ClientsMutex = new AsyncLocker ();
 
 		// 订阅列表
