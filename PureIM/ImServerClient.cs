@@ -39,34 +39,7 @@ namespace PureIM {
 
 
 
-		public ImServerClient (long _userid) {
-			UserId = _userid;
-			//Task.Run (async () => {
-			//	await ImServer.Add (this);
-			//	while (ElapsedTime >= DateTime.Now) {
-			//		if (ClientImpl.Status.IsOnline ()) {
-			//			// 如果在线
-			//			// 延续超时时长
-			//			ElapsedTime = DateTime.Now.Add (Config.OnlineMessageCache + Config.MessageResend);
-			//			// 重发缓存信息
-			//			IImMsg _msg;
-			//			while ((_msg = await GetCacheItemAsync (DateTime.Now - Config.MessageResend)) != null)
-			//				_ = SendAsync (_msg);
-			//		} else {
-			//			// 如果离线
-			//			// 清理超时信息
-			//			while ((await GetCacheItemAsync (DateTime.Now - Config.OnlineMessageCache)) != null);
-			//		}
-			//		// 等待下一个数据包处理时间
-			//		var _wait = await GetNextCacheTimeSpanAsync ();
-			//		if (_wait != null)
-			//			await Task.Delay (_wait.Value);
-			//	}
-			//	await Log.WriteAsync ($"{ClientImpl.UserDesp} connect clear.");
-			//	ClientImpl = ImClientImplNone.Inst;
-			//	await ImServer.Remove (UserId);
-			//});
-		}
+		public ImServerClient (long _userid) => UserId = _userid;
 
 		public async Task SetClientImpl (IImClientImpl _client_impl, long _seq) {
 			if (ClientImpl != ImClientImplNone.Inst)
@@ -162,6 +135,14 @@ namespace PureIM {
 				};
 				foreach (var _receiver in _receivers)
 					await ImServer.SendAsync (_receiver, _msg);
+			}
+		}
+
+		public async Task CloseAsync () {
+			if (ClientImpl != ImClientImplNone.Inst) {
+				ClientImpl.OnRecvCbAsync = null;
+				await ClientImpl.CloseAsync ();
+				ClientImpl = ImClientImplNone.Inst;
 			}
 		}
 

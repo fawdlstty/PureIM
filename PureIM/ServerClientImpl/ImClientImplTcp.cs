@@ -1,4 +1,5 @@
-﻿using PureIM.Tools;
+﻿using PureIM.Message;
+using PureIM.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,30 +34,35 @@ namespace PureIM.ServerClientImpl {
 			_client_addr = $"client[{Client.Client.RemoteEndPoint}]";
 		}
 
+		public async Task RunOnceAsync () {
+			byte[] _buf = new byte [4];
+			if (!Client.Connected)
+				return;
+			int _readed = 0;
+			while (_readed < _buf.Length)
+				_readed += await CStream.ReadAsync (_buf, _readed, _buf.Length - _readed);
+			//
+			int _pkg_len = BitConverter.ToInt32 (_buf);
+			if (_pkg_len == 0) {
+				await SendAsync (PingBuf);
+				return;
+			}
+			//await Log.WriteAsync ($"read {_pkg_len} bytes from {UserDesp}");
+			_buf = _pkg_len != _buf.Length ? new byte[_pkg_len] : _buf;
+			_readed = 0;
+			while (_readed < _pkg_len)
+				_readed += await CStream.ReadAsync (_buf, _readed, _pkg_len - _readed);
+			//
+			while (OnRecvCbAsync == null)
+				await Task.Delay (TimeSpan.FromMilliseconds (1));
+			//await Log.WriteAsync ($"process packet from {UserDesp}");
+			await OnRecvCbAsync (_buf);
+		}
+
 		public async Task RunAsync () {
 			try {
-				byte[] _len_buf = new byte [4], _buf = _len_buf;
-				while (Client.Connected) {
-					int _readed = 0;
-					while (_readed < _len_buf.Length)
-						_readed += await CStream.ReadAsync (_len_buf, _readed, _len_buf.Length - _readed);
-					//
-					int _pkg_len = BitConverter.ToInt32 (_len_buf);
-					if (_pkg_len == 0) {
-						await SendAsync (PingBuf);
-						continue;
-					}
-					//await Log.WriteAsync ($"read {_pkg_len} bytes from {UserDesp}");
-					_buf = _pkg_len != _buf.Length ? new byte[_pkg_len] : _buf;
-					_readed = 0;
-					while (_readed < _pkg_len)
-						_readed += await CStream.ReadAsync (_buf, _readed, _pkg_len - _readed);
-					//
-					while (OnRecvCbAsync == null)
-						await Task.Delay (TimeSpan.FromMilliseconds (1));
-					//await Log.WriteAsync ($"process packet from {UserDesp}");
-					await OnRecvCbAsync (_buf);
-				}
+				while (Client.Connected)
+					await RunOnceAsync ();
 			} catch (Exception) {
 			}
 			_last_conn_time = DateTime.Now;
@@ -72,6 +78,12 @@ namespace PureIM.ServerClientImpl {
 			} catch (Exception) {
 			}
 			return false;
+		}
+
+		public async Task<bool> SendReplyAndLoggingAsync (long _seq, string _data) {
+			var _reply = v0_ReplyMsg.Failure (_seq, _data);
+			await Log.WriteAsync ($"server -> {ClientAddr}: {_reply.SerilizeLog ()}");
+			return await SendAsync (_reply.Serilize ());
 		}
 
 		public async Task CloseAsync () {
