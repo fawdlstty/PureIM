@@ -1,4 +1,5 @@
-﻿using PureIM.Tools;
+﻿using PureIM.Message;
+using PureIM.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,6 @@ namespace PureIM.ServerClientImpl {
 		public DateTime LastConnTime { get => Status.IsOnline () ? DateTime.Now : _last_conn_time; }
 		private DateTime _last_conn_time = DateTime.Now;
 		public Func<byte[], Task> OnRecvCbAsync { get; set; } = null;
-		public Func<Task> OnCloseAsync { get; set; } = null;
 		public string UserDesp {
 			get => _user_desp == "" ? ClientAddr : _user_desp;
 			set => _user_desp = value;
@@ -43,7 +43,6 @@ namespace PureIM.ServerClientImpl {
 			//
 			int _pkg_len = BitConverter.ToInt32 (_buf);
 			if (_pkg_len == 0) {
-				await SendAsync (PingBuf);
 				return;
 			}
 			//await Log.WriteAsync ($"read {_pkg_len} bytes from {UserDesp}");
@@ -79,8 +78,10 @@ namespace PureIM.ServerClientImpl {
 			return false;
 		}
 
-		public async Task<bool> SendReplyAndLoggingAsync (long _seq, string _data) {
-			var _reply = v0_ReplyMsg.Failure (_seq, _data);
+		public async Task<bool> SendPingAsync () => await SendAsync (PingBuf);
+
+		public async Task<bool> SendReplyAndLoggingAsync (long _msgid, long _seq, string _data) {
+			var _reply = v0_ReplyMsg.Failure (_msgid, _seq, _data);
 			await Log.WriteAsync ($"server -> {ClientAddr}: {_reply.SerilizeLog ()}");
 			return await SendAsync (_reply.Serilize ());
 		}

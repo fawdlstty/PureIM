@@ -15,6 +15,8 @@ namespace PureIM {
 		public long UserId { get; private set; } = -1;
 		private IImClientImpl ClientImpl { get; set; } = ImClientImplNone.Inst;
 		private long Seq = 0;
+		public bool ToClear { get; set; } = false;
+		public Func<Task> OnClearExit { get; set; } = null;
 
 		// 发送状态缓存
 		private List<(IImMsg _msg, DateTime _pstime)> SendCaches = new List<(IImMsg _msg, DateTime _pstime)> ();
@@ -26,45 +28,39 @@ namespace PureIM {
 
 
 
-		/// <summary>
-		/// 清理超时信息
-		/// </summary>
-		/// <returns></returns>
-		private async Task ClearTimeoutMsgAsync () {
-			if (SendCaches.Any ()) {
-				using (var _locker = await SendCachesMutex.LockAsync ()) {
-					while (SendCaches.Any () && SendCaches [0]._pstime <= DateTime.Now - Config.OnlineMessageCache)
-						SendCaches.RemoveAt (0);
-				}
-			}
-			if (RecvCaches.Any ()) {
-				using (var _locker = await RecvCachesMutex.LockAsync ()) {
-					while (RecvCaches.Any () && RecvCaches [0]._pstime <= DateTime.Now - Config.OnlineMessageCache)
-						RecvCaches.RemoveAt (0);
-				}
-			}
-		}
-
 		public ImServerClient (long _userid) {
 			UserId = _userid;
 			Task.Run (async () => {
-				await ImServer.Add (this);
 				while (true) {
+					// 等待一下
+					await Task.Delay (Config.MsgQueueClearSpan);
+
 					// 清理超时信息
-					await ClearTimeoutMsgAsync ();
+					if (SendCaches.Any ()) {
+						using (var _locker = await SendCachesMutex.LockAsync ()) {
+							while (SendCaches.Any () && SendCaches[0]._pstime <= DateTime.Now - Config.OnlineMessageCache)
+								SendCaches.RemoveAt (0);
+						}
+					}
+					if (RecvCaches.Any ()) {
+						using (var _locker = await RecvCachesMutex.LockAsync ()) {
+							while (RecvCaches.Any () && RecvCaches[0]._pstime <= DateTime.Now - Config.OnlineMessageCache)
+								RecvCaches.RemoveAt (0);
+						}
+					}
 
 					// 如果链接已断开，并且没有任何缓存信息，那么直接清理链接对象
 					if (!(ClientImpl.Status.IsOnline () || SendCaches.Any () || RecvCaches.Any ()))
 						break;
 
-					// TODO 每2次清理时间发一个ping
-
-					// 等待下一个清理时间
-					await Task.Delay (Config.MsgQueueClearSpan);
+					// ping一下
+					if (ClientImpl.Status.IsOnline ())
+						await ClientImpl.SendPingAsync ();
 				}
-				await Log.WriteAsync ($"{ClientImpl.UserDesp} connect clear.");
+				ToClear = true;
 				ClientImpl = ImClientImplNone.Inst;
-				await ImServer.Remove (UserId);
+				if (OnClearExit != null)
+					await OnClearExit ();
 			});
 		}
 
@@ -72,17 +68,29 @@ namespace PureIM {
 			if (ClientImpl != ImClientImplNone.Inst)
 				ClientImpl.UserDesp = $"dup user[{UserId}]";
 			if (ClientImpl.Status.IsOnline ()) {
-				var _ret = v0_CmdMsg.Offline (++Seq, "offline due to duplicate");
+				var _ret = v0_CmdMsg.Disconnect (++Seq, "disconnect due to duplicate");
 				await Log.WriteAsync ($"server -> {ClientImpl.UserDesp}: {_ret.SerilizeLog ()}");
 				await ClientImpl.SendAsync (_ret.Serilize ());
 				await ClientImpl.CloseAsync ();
 			}
+			bool _is_conn = ClientImpl.Status.IsOffline ();
 			ClientImpl = _client_impl;
 			ClientImpl.OnRecvCbAsync = OnRecvAsync;
 			ClientImpl.UserDesp = $"user[{UserId}]";
-			await SendAndLoggingAsync (v0_ReplyMsg.LoginSuccess (_seq));
+			await Log.WriteAsync ($"{_client_impl.ClientAddr} {(_is_conn ? "connect" : "reconnect")} to {ClientImpl.UserDesp}.");
 
 			// 新上线或者重新上线，缓存信息重新全发一遍
+			var _to_sends = new List<IImMsg> ();
+			if (SendCaches.Count > 0) {
+				using (var _locker = await SendCachesMutex.LockAsync ()) {
+					_to_sends.AddRange (from p in SendCaches select p._msg);
+				}
+			}
+			await SendAndLoggingAsync (v0_ReplyMsg.Success (-1, _seq, "connect", null /*TODO 补充参数，比如userid或者配置*/), false);
+			foreach (var _msg in _to_sends)
+				_ = ClientImpl.SendAsync (_msg.Serilize ());
+			if (_to_sends.Count > 0)
+				await Log.WriteAsync ($"resend last {_to_sends.Count} msg to {ClientImpl.UserDesp}.");
 		}
 
 		/// <summary>
@@ -90,15 +98,17 @@ namespace PureIM {
 		/// </summary>
 		/// <param name="_msg"></param>
 		/// <returns></returns>
-		public async Task SendAsync (IImMsg _msg) {
+		public async Task SendAsync (IImMsg _msg, bool _cache = true) {
 			_ = ClientImpl.SendAsync (_msg.Serilize ());
+			if (!_cache)
+				return;
 			using (var _locker = await SendCachesMutex.LockAsync ())
 				SendCaches.Add ((_msg, DateTime.Now));
 		}
 
-		public async Task SendAndLoggingAsync (IImMsg _msg) {
+		public async Task SendAndLoggingAsync (IImMsg _msg, bool _cache = true) {
 			await Log.WriteAsync ($"server -> {ClientImpl.UserDesp}: {_msg.SerilizeLog ()}");
-			await SendAsync (_msg);
+			await SendAsync (_msg, _cache);
 		}
 
 		public async Task OnRecvAsync (byte[] _data) {
@@ -120,15 +130,9 @@ namespace PureIM {
 				if (_repeat)
 					return;
 
-				// 检查
-				if (!await ImServer.Filter.CheckAccept (_stupd_msg)) {
-					await SendReplyAsync (_msg.MsgId, _msg.Seq, AcceptMsgType.Reject);
-					return;
-				}
-
 				// 回复发送者
 				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
-				await SendReplyAsync (_msg.MsgId, _msg.Seq, AcceptMsgType.Accept);
+				await SendAndLoggingAsync (v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept"));
 
 				// TODO 存档
 			} else if (_msg is IImContentMsg _cntmsg) {
@@ -139,13 +143,13 @@ namespace PureIM {
 
 				// 检查
 				if (!await ImServer.Filter.CheckAccept (_msg)) {
-					await SendReplyAsync (_msg.MsgId, _msg.Seq, AcceptMsgType.Reject);
+					await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, "didn't pass filter check");
 					return;
 				}
 
 				// 回复发送者
 				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
-				await SendReplyAsync (_msg.MsgId, _msg.Seq, AcceptMsgType.Accept);
+				await SendAndLoggingAsync (v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept"));
 
 				// 存档
 				if (_cntmsg.Type.IsStore ()) {
@@ -163,8 +167,12 @@ namespace PureIM {
 			}
 		}
 
-		public async Task SendReplyAsync (long _msgid, long _seq, AcceptMsgType _type) {
-			await SendAndLoggingAsync (new v0_ReplyMsg { MsgId = _msgid, Seq = _seq, Type = _type });
+		public async Task SendSuccessReplyAsync (long _msgid, long _seq) {
+			await SendAndLoggingAsync (v0_ReplyMsg.Success (_msgid, _seq, "accept"));
+		}
+
+		public async Task SendFailureReplyAsync (long _msgid, long _seq, string _reason) {
+			await SendAndLoggingAsync (v0_ReplyMsg.Failure (_msgid, _seq, _reason));
 		}
 	}
 }

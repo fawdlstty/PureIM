@@ -27,21 +27,21 @@ namespace PureIM.Message {
 
 		public string SerilizeLog () {
 			string _attach_str = Option switch {
-				"login" => Encoding.UTF8.GetString (Attachment),
-				"offline" => Encoding.UTF8.GetString (Attachment),
+				"connect" => Encoding.UTF8.GetString (Attachment),
+				"disconnect" => Encoding.UTF8.GetString (Attachment),
 				_ when Attachment == null => "(null)",
 				_ => "binary data...",
 			};
 			return $"v0_CmdMsg {{ MsgId={MsgId}, Seq={Seq}, CmdType={CmdType}, Option={Option}, Attachment={_attach_str} }}";
 		}
 
-		public static v0_CmdMsg Offline (long _seq, string _reason) {
-			return new v0_CmdMsg { MsgId = 0, Seq = _seq, CmdType = MsgCmdType.Auth, Option = "offline", Attachment = Encoding.UTF8.GetBytes (_reason) };
+		public static v0_CmdMsg Disconnect (long _seq, string _reason) {
+			return new v0_CmdMsg { MsgId = 0, Seq = _seq, CmdType = MsgCmdType.Auth, Option = "disconnect", Attachment = Encoding.UTF8.GetBytes (_reason) };
 		}
 
 		// 当前仅客户端测试使用
 		public static byte[] LoginForce (long _seq, long _userid) {
-			var _cmd_reply_msg = new v0_CmdMsg { MsgId = 0, Seq = _seq, CmdType = MsgCmdType.Auth, Option = "login", Attachment = Encoding.UTF8.GetBytes ($"[forcelogin]{_userid}") };
+			var _cmd_reply_msg = new v0_CmdMsg { MsgId = 0, Seq = _seq, CmdType = MsgCmdType.Auth, Option = "connect", Attachment = Encoding.UTF8.GetBytes ($"[forcelogin]{_userid}") };
 			return _cmd_reply_msg.Serilize ();
 		}
 	}

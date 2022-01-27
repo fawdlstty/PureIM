@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace PureIM {
 	public interface IMessageFilter {
-		public Task<long> Login (byte[] _data);
+		public Task<long?> Connect (byte[] _data);
 
 		public Task<bool> CheckAccept (IImMsg _msg);
 	}
