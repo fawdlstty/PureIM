@@ -1,5 +1,4 @@
-﻿using PureIM.Message;
-using PureIM.Tools;
+﻿using PureIM.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -29,7 +29,7 @@ namespace PureIM.Message {
 				_ when Data == null => "(null)",
 				_ => "binary data...",
 			};
-			return $"v0_CmdMsg {{ MsgId={MsgId}, Seq={Seq}, SenderUserId={SenderUserId}, RecverUserId={RecverUserId}, Type={Type.GetDesp ()}, SendTime={SendTime}, Data={_data_str} }}";
+			return $"v0_PrivateMsg {{ MsgId={MsgId}, Seq={Seq}, SenderUserId={SenderUserId}, RecverUserId={RecverUserId}, Type={Type.GetDesp ()}, SendTime={SendTime}, Data={_data_str} }}";
 		}
 	}
 }

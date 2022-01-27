@@ -56,12 +56,14 @@ namespace PureIM {
 					try {
 						await _client_impl.RunOnceAsync ();
 						await Log.WriteAsync ($"{_client_impl.ClientAddr} login to {_client_impl.UserDesp}");
-						_client = await GetClientAsync (_userid, _client_impl, _seq);
+						_client = await GetClientAsync (_userid);
+						await _client.SetClientImpl (_client_impl, _seq);
 					} catch (Exception _e) {
 						await _client_impl.SendReplyAndLoggingAsync (-1, $"exception: {_e.Message}");
 					}
 					if (_client == null)
 						return;
+					// TODO ???
 					await _client.CloseAsync ();
 					using (var _locker = await ClientsMutex.LockAsync ()) {
 						ClientsOnline.Remove (_userid);
@@ -74,23 +76,26 @@ namespace PureIM {
 			TcpServerIsRunning = false;
 		}
 
+		internal static async Task Add (ImServerClient _client) {
+			using (var _locker = await ClientsMutex.LockAsync ())
+				Clients.Add (_client.UserId, _client);
+		}
+		internal static async Task Remove (long _userid) {
+			using (var _locker = await ClientsMutex.LockAsync ()) {
+				if (Clients.ContainsKey (_userid))
+					Clients.Remove (_userid);
+			}
+		}
+
 		public static async Task SendAsync (long _userid, IImMsg _msg) => await (await GetClientAsync (_userid)).SendAndLoggingAsync (_msg);
 
-		internal static async Task<ImServerClient> GetClientAsync (long _userid, IImClientImpl _client_impl = null, long _seq = -1) {
+		internal static async Task<ImServerClient> GetClientAsync (long _userid) {
 			using (var _locker = await ClientsMutex.LockAsync ()) {
-				if (ClientsOnline.ContainsKey (_userid))
-					return ClientsOnline[_userid];
-				if (ClientsTempClose.ContainsKey (_userid))
-					return ClientsTempClose[_userid];
-				var _client = new ImServerClient (_userid);
-				if (_client_impl != null) {
-					ClientsOnline.Add (_userid, _client);
-					await _client.SetClientImpl (_client_impl, _seq);
-				} else {
-					ClientsTempClose.Add (_userid, _client);
-				}
-				return _client;
+				if (Clients.ContainsKey (_userid))
+					return Clients[_userid];
 			}
+			var _client = new ImServerClient (_userid);
+			return _client;
 		}
 
 		public static async Task<List<long>> GetTopicUserIds (long _topicid, bool _only_online) {
@@ -98,7 +103,7 @@ namespace PureIM {
 				// 广播消息
 				if (_only_online) {
 					using (var _locker = await ClientsMutex.LockAsync ())
-						return ClientsOnline.Keys.ToList ();
+						return Clients.Keys.ToList ();
 				} else {
 					return await DataStorer.GetAllUserIds ();
 				}
@@ -114,7 +119,7 @@ namespace PureIM {
 				}
 				if (_only_online) {
 					using (var _locker = await ClientsMutex.LockAsync ()) {
-						_userids = (from p in _userids where ClientsOnline.ContainsKey (p) select p).ToList ();
+						_userids = (from p in _userids where Clients.ContainsKey (p) select p).ToList ();
 					}
 				}
 				return _userids;
@@ -122,8 +127,7 @@ namespace PureIM {
 		}
 
 		// 客户端列表
-		private static Dictionary<long, ImServerClient> ClientsOnline { get; set; } = new Dictionary<long, ImServerClient> ();
-		private static Dictionary<long, ImServerClient> ClientsTempClose { get; set; } = new Dictionary<long, ImServerClient> ();
+		private static Dictionary<long, ImServerClient> Clients { get; set; } = new Dictionary<long, ImServerClient> ();
 		private static AsyncLocker ClientsMutex = new AsyncLocker ();
 
 		// 订阅列表

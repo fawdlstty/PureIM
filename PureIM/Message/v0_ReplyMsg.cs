@@ -27,7 +27,7 @@ namespace PureIM.Message {
 				_ when Attachment == null => "(null)",
 				_ => "binary data...",
 			};
-			return $"v0_CmdMsg {{ Seq={Seq}, CmdReplyType={ReplyType}, Info={Info}, Attachment={_attach_str} }}";
+			return $"v0_ReplyMsg {{ Seq={Seq}, ReplyType={ReplyType}, Info={Info}, Attachment={_attach_str} }}";
 		}
 
 		public static v0_ReplyMsg LoginSuccess (long _seq) {

@@ -22,6 +22,6 @@ namespace PureIM.Message {
 
 
 
-		public string SerilizeLog () => $"v0_AcceptMsg {{ MsgId={MsgId}, Type={Type} }}";
+		public string SerilizeLog () => $"v0_StatusUpdateMsg {{ MsgId={MsgId}, Type={Type} }}";
 	}
 }

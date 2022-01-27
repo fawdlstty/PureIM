@@ -16,19 +16,6 @@ namespace PureIM {
 		private IImClientImpl ClientImpl { get; set; } = ImClientImplNone.Inst;
 		private long Seq = 0;
 
-		///// <summary>超时后发送状态（此对象）的存在时间</summary>
-		//private DateTime ElapsedTime {
-		//	get {
-		//		if (ClientImpl.Status.IsOnline ()) {
-		//			return DateTime.Now.Add (Config.OnlineMessageCache);
-		//		} else if (SendCaches.Count == 0 && RecvCaches.Count == 0) {
-		//			return DateTime.Now.AddMilliseconds (-1);
-		//		} else {
-		//			if (SendCaches.Count > 0 && RecvCaches.Count > 0)
-		//		}
-		//	}
-		//}
-
 		// 发送状态缓存
 		private List<(IImMsg _msg, DateTime _pstime)> SendCaches = new List<(IImMsg _msg, DateTime _pstime)> ();
 		private AsyncLocker SendCachesMutex = new AsyncLocker ();
@@ -39,7 +26,47 @@ namespace PureIM {
 
 
 
-		public ImServerClient (long _userid) => UserId = _userid;
+		/// <summary>
+		/// 清理超时信息
+		/// </summary>
+		/// <returns></returns>
+		private async Task ClearTimeoutMsgAsync () {
+			if (SendCaches.Any ()) {
+				using (var _locker = await SendCachesMutex.LockAsync ()) {
+					while (SendCaches.Any () && SendCaches [0]._pstime <= DateTime.Now - Config.OnlineMessageCache)
+						SendCaches.RemoveAt (0);
+				}
+			}
+			if (RecvCaches.Any ()) {
+				using (var _locker = await RecvCachesMutex.LockAsync ()) {
+					while (RecvCaches.Any () && RecvCaches [0]._pstime <= DateTime.Now - Config.OnlineMessageCache)
+						RecvCaches.RemoveAt (0);
+				}
+			}
+		}
+
+		public ImServerClient (long _userid) {
+			UserId = _userid;
+			Task.Run (async () => {
+				await ImServer.Add (this);
+				while (true) {
+					// 清理超时信息
+					await ClearTimeoutMsgAsync ();
+
+					// 如果链接已断开，并且没有任何缓存信息，那么直接清理链接对象
+					if (!(ClientImpl.Status.IsOnline () || SendCaches.Any () || RecvCaches.Any ()))
+						break;
+
+					// TODO 每2次清理时间发一个ping
+
+					// 等待下一个清理时间
+					await Task.Delay (Config.MsgQueueClearSpan);
+				}
+				await Log.WriteAsync ($"{ClientImpl.UserDesp} connect clear.");
+				ClientImpl = ImClientImplNone.Inst;
+				await ImServer.Remove (UserId);
+			});
+		}
 
 		public async Task SetClientImpl (IImClientImpl _client_impl, long _seq) {
 			if (ClientImpl != ImClientImplNone.Inst)
@@ -54,6 +81,8 @@ namespace PureIM {
 			ClientImpl.OnRecvCbAsync = OnRecvAsync;
 			ClientImpl.UserDesp = $"user[{UserId}]";
 			await SendAndLoggingAsync (v0_ReplyMsg.LoginSuccess (_seq));
+
+			// 新上线或者重新上线，缓存信息重新全发一遍
 		}
 
 		/// <summary>
@@ -63,10 +92,6 @@ namespace PureIM {
 		/// <returns></returns>
 		public async Task SendAsync (IImMsg _msg) {
 			_ = ClientImpl.SendAsync (_msg.Serilize ());
-
-			// 回复类信息不加入缓存，没送达直接抛弃
-			if (_msg is v0_ReplyMsg)
-				return;
 			using (var _locker = await SendCachesMutex.LockAsync ())
 				SendCaches.Add ((_msg, DateTime.Now));
 		}
@@ -138,16 +163,8 @@ namespace PureIM {
 			}
 		}
 
-		public async Task CloseAsync () {
-			if (ClientImpl != ImClientImplNone.Inst) {
-				ClientImpl.OnRecvCbAsync = null;
-				await ClientImpl.CloseAsync ();
-				ClientImpl = ImClientImplNone.Inst;
-			}
-		}
-
 		public async Task SendReplyAsync (long _msgid, long _seq, AcceptMsgType _type) {
-			await SendAndLoggingAsync (new v0_AcceptMsg { MsgId = _msgid, Seq = _seq, Type = _type });
+			await SendAndLoggingAsync (new v0_ReplyMsg { MsgId = _msgid, Seq = _seq, Type = _type });
 		}
 	}
 }
