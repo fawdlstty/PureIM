@@ -37,8 +37,12 @@ namespace PureIM {
 						if (_msg is v0_CmdMsg _cmsg) {
 							if (_cmsg.CmdType == MsgCmdType.Auth && _cmsg.Option == "connect") {
 								long? _ouserid = await Filter.Connect (_cmsg.Attachment);
-								if (_ouserid != null)
+								if (_ouserid != null) {
 									_userid = _ouserid.Value;
+									return;
+								} else {
+									await _client_impl.SendReplyAndLoggingAsync (-1, _seq, "auth failure");
+								}
 							} else {
 								await _client_impl.SendReplyAndLoggingAsync (-1, _seq, "cmdtype is not `Auth` or option is not `connect`");
 							}

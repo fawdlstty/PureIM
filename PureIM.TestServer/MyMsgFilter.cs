@@ -18,7 +18,12 @@ namespace PureIM.TestServer {
 			return null;
 		}
 
-		public async Task<bool> CheckAccept (IImMsg _msg) {
+		public async Task<bool> CheckAccept (v0_PrivateMsg _msg) {
+			await Task.Yield ();
+			return true;
+		}
+
+		public async Task<bool> CheckAccept (v0_TopicMsg _msg) {
 			await Task.Yield ();
 			return true;
 		}

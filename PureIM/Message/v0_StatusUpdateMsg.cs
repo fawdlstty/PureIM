@@ -18,10 +18,10 @@ namespace PureIM.Message {
 	public class v0_StatusUpdateMsg: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long Seq { get; set; }
-		[Key (2)] public StatusMsgType Type { get; set; }
+		[Key (2)] public StatusMsgType StatusMsgType { get; set; }
 
 
 
-		public string SerilizeLog () => $"v0_StatusUpdateMsg {{ MsgId={MsgId}, Type={Type} }}";
+		public string SerilizeLog () => $"v0_StatusUpdateMsg {{ MsgId={MsgId}, StatusMsgType={StatusMsgType} }}";
 	}
 }

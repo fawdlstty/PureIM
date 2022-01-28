@@ -31,9 +31,12 @@ namespace PureIM {
 		public ImServerClient (long _userid) {
 			UserId = _userid;
 			Task.Run (async () => {
+				// 给任意链接提供一个至少 ClearTimeSpan 的生存时间，避免短时间闪断还得重新分配对象
+				bool _first = true;
+
 				while (true) {
 					// 等待一下
-					await Task.Delay (Config.MsgQueueClearSpan);
+					await Task.Delay (Config.ClearTimeSpan);
 
 					// 清理超时信息
 					if (SendCaches.Any ()) {
@@ -50,8 +53,13 @@ namespace PureIM {
 					}
 
 					// 如果链接已断开，并且没有任何缓存信息，那么直接清理链接对象
-					if (!(ClientImpl.Status.IsOnline () || SendCaches.Any () || RecvCaches.Any ()))
-						break;
+					if (!(ClientImpl.Status.IsOnline () || SendCaches.Any () || RecvCaches.Any ())) {
+						if (_first) {
+							_first = false;
+						} else {
+							break;
+						}
+					}
 
 					// ping一下
 					if (ClientImpl.Status.IsOnline ())
@@ -142,7 +150,12 @@ namespace PureIM {
 					return;
 
 				// 检查
-				if (!await ImServer.Filter.CheckAccept (_msg)) {
+				bool _through_check = _msg switch {
+					v0_PrivateMsg _pmsg => await ImServer.Filter.CheckAccept (UserId, _pmsg),
+					v0_TopicMsg _tmsg => await ImServer.Filter.CheckAccept (UserId, _tmsg),
+					_ => false,
+				};
+				if (!_through_check) {
 					await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, "didn't pass filter check");
 					return;
 				}

@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 namespace PureIM.Tools {
 	public class Log {
 		private static Channel<string> s_chan = Channel.CreateUnbounded<string> ();
-		private static bool s_run = false;
 
 
 
