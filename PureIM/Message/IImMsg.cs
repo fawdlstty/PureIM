@@ -1,4 +1,5 @@
 ﻿using MessagePack;
+using PureIM.DataModel;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,9 +23,9 @@ namespace PureIM.Message {
 
 	[Union (0, typeof (v0_CmdMsg))]
 	[Union (1, typeof (v0_ReplyMsg))]
-	[Union (2, typeof (v0_PrivateMsg))]
-	[Union (3, typeof (v0_TopicMsg))]
-	[Union (4, typeof (v0_StatusUpdateMsg))]
+	[Union (2, typeof (tb_ImPrivateMsg))]
+	[Union (3, typeof (tb_ImTopicMsg))]
+	[Union (4, typeof (v0_StatusUpdate))]
 	public interface IImMsg {
 		public long MsgId { get; set; }
 		public long Seq { get; set; }

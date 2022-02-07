@@ -151,21 +151,12 @@ namespace PureIM {
 				}
 			} else if (_msg is v0_CmdMsg _cmsg) {
 				throw new Exception ();
-			} else if (_msg is v0_StatusUpdateMsg _stupd_msg) {
+			} else if (_msg is v0_StatusUpdate _stupd_msg) {
 				// 判定是否重复
 				if (await CheckRecvRepeatAsync (_msg))
 					return;
 
-				if (_stupd_msg.StatusMsgType != StatusMsgType.DestAccept && _stupd_msg.StatusMsgType != StatusMsgType.DestReaded) {
-					// TODO 回复错误
-					return;
-				}
-
-				if (_stupd_msg.MsgStructType == MsgStructType.PrivateMsg) {
-					// TODO 私聊消息存档
-				} else {
-					// TODO 主题消息存档
-				}
+				// 存档
 
 				// 回复发送者并写入发送缓存
 				var _reply = v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept");

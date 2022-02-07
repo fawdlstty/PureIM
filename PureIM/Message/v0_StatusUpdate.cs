@@ -5,11 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PureIM.Message {
-	public enum MsgStructType {
-		PrivateMsg,
-		TopicMsg,
-	}
-
 	public enum StatusMsgType {
 		Accept          = 0x1,  // 发送成功
 		DestAccept      = 0x2,  // 对方已接收
@@ -20,11 +15,12 @@ namespace PureIM.Message {
 
 
 	[MessagePackObject]
-	public class v0_StatusUpdateMsg: IImMsg {
+	public class v0_StatusUpdate: IImMsg {
 		[Key (0)] public long MsgId { get; set; }
 		[Key (1)] public long Seq { get; set; }
-		[Key (2)] public MsgStructType MsgStructType { get; set; }
-		[Key (3)] public StatusMsgType StatusMsgType { get; set; }
+		[Key (2)] public List<(long LastMsgId, long SenderUserId, long RecverUserId)> PrivateMsgIds { get; set; }
+		[Key (3)] public List<(long LastMsgId, long TopicId)> TopicMsgId { get; set; }
+		[Key (4)] public StatusMsgType StatusMsgType { get; set; }
 
 
 
