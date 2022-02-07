@@ -18,14 +18,14 @@ namespace PureIM.TestServer {
 			return null;
 		}
 
-		public async Task<bool> CheckAccept (v0_PrivateMsg _msg) {
+		public async Task<(bool, string)> CheckAccept (long _userid, v0_PrivateMsg _msg) {
 			await Task.Yield ();
-			return true;
+			return (true, "");
 		}
 
-		public async Task<bool> CheckAccept (v0_TopicMsg _msg) {
+		public async Task<(bool, string)> CheckAccept (long _userid, v0_TopicMsg _msg) {
 			await Task.Yield ();
-			return true;
+			return (true, "");
 		}
 	}
 }

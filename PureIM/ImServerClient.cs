@@ -23,10 +23,28 @@ namespace PureIM {
 		private AsyncLocker SendCachesMutex = new AsyncLocker ();
 
 		// 接收状态缓存 （已接收的信息）
-		private List<(long _msgid, DateTime _pstime)> RecvCaches = new List<(long _msgid, DateTime _pstime)> ();
+		private List<(IImMsg _msg, IImMsg _reply, DateTime _pstime)> RecvCaches = new List<(IImMsg _msg, IImMsg _reply, DateTime _pstime)> ();
 		private static AsyncLocker RecvCachesMutex = new AsyncLocker ();
 
 
+
+		/// <summary>
+		/// 检查接收到的数据包在近一分钟是否重复，如重复则自动回复
+		/// </summary>
+		/// <param name="_msg"></param>
+		/// <returns></returns>
+		public async Task<bool> CheckRecvRepeatAsync (IImMsg _msg) {
+			using (var _locker = await RecvCachesMutex.LockAsync ()) {
+				foreach (var (_msg1, _reply, _pstime1) in RecvCaches) {
+					if (_msg.Seq == _msg1.Seq) {
+						if (_reply != null)
+							await SendAndLoggingAsync (_reply, false);
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 
 		public ImServerClient (long _userid) {
 			UserId = _userid;
@@ -120,6 +138,7 @@ namespace PureIM {
 		}
 
 		public async Task OnRecvAsync (byte[] _data) {
+			// 对应处理
 			var _msg = IImMsg.FromBytes (_data);
 			await Log.WriteAsync ($"{ClientImpl.UserDesp} -> server: {_msg.SerilizeLog ()}");
 			if (_msg is v0_ReplyMsg) {
@@ -134,40 +153,57 @@ namespace PureIM {
 				throw new Exception ();
 			} else if (_msg is v0_StatusUpdateMsg _stupd_msg) {
 				// 判定是否重复
-				bool _repeat = false;
-				if (_repeat)
+				if (await CheckRecvRepeatAsync (_msg))
 					return;
 
-				// 回复发送者
-				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
-				await SendAndLoggingAsync (v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept"));
+				if (_stupd_msg.StatusMsgType != StatusMsgType.DestAccept && _stupd_msg.StatusMsgType != StatusMsgType.DestReaded) {
+					// TODO 回复错误
+					return;
+				}
 
-				// TODO 存档
+				if (_stupd_msg.MsgStructType == MsgStructType.PrivateMsg) {
+					// TODO 私聊消息存档
+				} else {
+					// TODO 主题消息存档
+				}
+
+				// 回复发送者并写入发送缓存
+				var _reply = v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept");
+				await SendAndLoggingAsync (_reply);
+
+				// 写入接收缓存
+				using (var _locker = await RecvCachesMutex.LockAsync ())
+					RecvCaches.Add ((_msg, _reply, DateTime.Now));
 			} else if (_msg is IImContentMsg _cntmsg) {
 				// 判定是否重复
-				bool _repeat = false;
-				if (_repeat)
+				if (await CheckRecvRepeatAsync (_msg))
 					return;
 
-				// 检查
-				bool _through_check = _msg switch {
-					v0_PrivateMsg _pmsg => await ImServer.Filter.CheckAccept (UserId, _pmsg),
-					v0_TopicMsg _tmsg => await ImServer.Filter.CheckAccept (UserId, _tmsg),
-					_ => false,
-				};
-				if (!_through_check) {
-					await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, "didn't pass filter check");
-					return;
+				_cntmsg.MsgId = 0;
+				_cntmsg.SendTime = DateTime.Now;
+
+				if (_msg is v0_PrivateMsg _pmsg) {
+					var (_check, _reason) = await ImServer.Filter.CheckAccept (UserId, _pmsg);
+					if (!_check) {
+						await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, _reason);
+						return;
+					}
+
+					if (_pmsg.Type.IsStore ())
+						_pmsg.MsgId = await DataStorer.StoreMsg (_pmsg);
+				} else if (_msg is v0_TopicMsg _tmsg) {
+					var (_check, _reason) = await ImServer.Filter.CheckAccept (UserId, _tmsg);
+					if (!_check) {
+						await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, _reason);
+						return;
+					}
+
+					if (_tmsg.Type.IsStore ())
+						_tmsg.MsgId = await DataStorer.StoreMsg (_tmsg);
 				}
 
 				// 回复发送者
-				_msg.MsgId = _repeat ? 0 : Config.GetNewId (); // TODO 改为精确msgid
 				await SendAndLoggingAsync (v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept"));
-
-				// 存档
-				if (_cntmsg.Type.IsStore ()) {
-					// TODO 存数据库
-				}
 
 				// 发送给接收者
 				var _receivers = _cntmsg switch {
