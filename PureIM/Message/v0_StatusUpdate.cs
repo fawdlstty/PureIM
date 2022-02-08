@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 
 namespace PureIM.Message {
 	public enum StatusMsgType {
-		Accept          = 0x1,  // 发送成功
-		DestAccept      = 0x2,  // 对方已接收
-		DestReaded      = 0x3,  // 对方已读
+		Accept				= 0x1,  // 发送成功
+		RecverAccept		= 0x2,  // 对方已接收
+		RecverReaded		= 0x3,  // 对方已读
+		SenderKnowAccept	= 0x4,
+		SenderKnowReaded	= 0x5,
 		//Rejection		= 0x4,	// 拒收
 	}
 

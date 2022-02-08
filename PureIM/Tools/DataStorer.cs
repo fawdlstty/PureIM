@@ -69,8 +69,16 @@ namespace PureIM.Tools {
 		/// <param name="_private_msg_ids"></param>
 		/// <param name="_status_msg_type"></param>
 		/// <returns></returns>
-		public static async Task UpdateStatusAsync (List<(long LastMsgId, long SenderUserId, long RecverUserId)> _private_msg_ids, StatusMsgType _status_msg_type) {
-
+		public static async Task UpdateStatusAsync (List<(long LastMsgId, long SenderUserId, long RecverUserId)> _private_msgs, StatusMsgType _status_msg_type) {
+			foreach (var _item in _private_msgs) {
+				await _sql.Update<tb_ImPrivateMsgStatus> ()
+					.SetIf (_status_msg_type == StatusMsgType.RecverAccept, t => t.RecverRecvMsgId, _item.LastMsgId)
+					.SetIf (_status_msg_type == StatusMsgType.RecverReaded, t => t.RecverReadMsgId, _item.LastMsgId)
+					.SetIf (_status_msg_type == StatusMsgType.SenderKnowAccept, t => t.SenderRecvMsgId, _item.LastMsgId)
+					.SetIf (_status_msg_type == StatusMsgType.SenderKnowReaded, t => t.SenderReadMsgId, _item.LastMsgId)
+					.Where (t => t.SenderUserId == _item.SenderUserId && t.RecverUserId == _item.RecverUserId)
+					.ExecuteAffrowsAsync ();
+			}
 		}
 
 
@@ -80,8 +88,14 @@ namespace PureIM.Tools {
 		/// </summary>
 		/// <param name="_private_msg_ids"></param>
 		/// <returns></returns>
-		public static async Task UpdateStatusAsync (List<(long LastMsgId, long TopicId)> _private_msg_ids) {
-
+		public static async Task UpdateStatusAsync (List<(long LastMsgId, long TopicId)> _topic_msgs, StatusMsgType _status_msg_type) {
+			foreach (var _item in _topic_msgs) {
+				await _sql.Update<tb_ImTopicMsgStatus> ()
+					.SetIf (_status_msg_type == StatusMsgType.RecverAccept, t => t.RecverRecvMsgId, _item.LastMsgId)
+					.SetIf (_status_msg_type == StatusMsgType.RecverReaded, t => t.RecverReadMsgId, _item.LastMsgId)
+					.Where (t => t.TopicId == _item.TopicId)
+					.ExecuteAffrowsAsync ();
+			}
 		}
 
 
