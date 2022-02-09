@@ -1,4 +1,5 @@
-﻿using PureIM.Message;
+﻿using PureIM.DataModel;
+using PureIM.Message;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,12 +19,12 @@ namespace PureIM.TestServer {
 			return null;
 		}
 
-		public async Task<(bool, string)> CheckAccept (long _userid, v0_PrivateMsg _msg) {
+		public async Task<(bool, string)> CheckAccept (long _userid, tb_ImPrivateMsg _msg) {
 			await Task.Yield ();
 			return (true, "");
 		}
 
-		public async Task<(bool, string)> CheckAccept (long _userid, v0_TopicMsg _msg) {
+		public async Task<(bool, string)> CheckAccept (long _userid, tb_ImTopicMsg _msg) {
 			await Task.Yield ();
 			return (true, "");
 		}
