@@ -66,7 +66,7 @@ namespace PureIM.Tools {
 		/// <summary>
 		/// 修改私聊消息状态
 		/// </summary>
-		/// <param name="_private_msg_ids"></param>
+		/// <param name="_private_msgs"></param>
 		/// <param name="_status_msg_type"></param>
 		/// <returns></returns>
 		public static async Task UpdateStatusAsync (List<(long LastMsgId, long SenderUserId, long RecverUserId)> _private_msgs, StatusMsgType _status_msg_type) {
@@ -86,7 +86,8 @@ namespace PureIM.Tools {
 		/// <summary>
 		/// 修改主题消息状态
 		/// </summary>
-		/// <param name="_private_msg_ids"></param>
+		/// <param name="_topic_msgs"></param>
+		/// <param name="_status_msg_type"></param>
 		/// <returns></returns>
 		public static async Task UpdateStatusAsync (List<(long LastMsgId, long TopicId)> _topic_msgs, StatusMsgType _status_msg_type) {
 			foreach (var _item in _topic_msgs) {

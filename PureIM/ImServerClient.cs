@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using PureIM.DataModel;
 
 namespace PureIM {
 	public enum OnlineStatus { Offline, Online, TempOffline }
@@ -14,7 +15,7 @@ namespace PureIM {
 	class ImServerClient {
 		public long UserId { get; private set; } = -1;
 		private IImClientImpl ClientImpl { get; set; } = ImClientImplNone.Inst;
-		private long Seq = 0;
+		private long Seq { get; set; } = 0;
 		public bool ToClear { get; set; } = false;
 		public Func<Task> OnClearExit { get; set; } = null;
 
@@ -94,7 +95,7 @@ namespace PureIM {
 			if (ClientImpl != ImClientImplNone.Inst)
 				ClientImpl.UserDesp = $"dup user[{UserId}]";
 			if (ClientImpl.Status.IsOnline ()) {
-				var _ret = v0_CmdMsg.Disconnect (++Seq, "disconnect due to duplicate");
+				var _ret = v0_CmdMsg.Disconnect ("disconnect due to duplicate");
 				await Log.WriteAsync ($"server -> {ClientImpl.UserDesp}: {_ret.SerilizeLog ()}");
 				await ClientImpl.SendAsync (_ret.Serilize ());
 				await ClientImpl.CloseAsync ();
@@ -157,14 +158,21 @@ namespace PureIM {
 					return;
 
 				// 存档
-
-				// 回复发送者并写入发送缓存
-				var _reply = v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept");
-				await SendAndLoggingAsync (_reply);
+				if (_stupd_msg.PrivateMsgs?.Count > 0) {
+					await DataStorer.UpdateStatusAsync (_stupd_msg.PrivateMsgs, _stupd_msg.StatusMsgType);
+					if ((_stupd_msg.StatusMsgType == StatusMsgType.RecverAccept && Config.EnableReceiverReceivedNotify) ||
+						(_stupd_msg.StatusMsgType == StatusMsgType.RecverReaded && Config.EnableReceiverReadedNotify)) {
+						bool _recv = _stupd_msg.StatusMsgType == StatusMsgType.RecverAccept;
+						foreach (var (_msgid, _sender_userid, _recver_userid) in _stupd_msg.PrivateMsgs)
+							await ImServer.SendAsync (_sender_userid, new v0_StatusUpdate { MsgId = -1, Seq = -1 });
+					}
+				}
+				if (_stupd_msg.TopicMsgs?.Count > 0)
+					await DataStorer.UpdateStatusAsync (_stupd_msg.TopicMsgs, _stupd_msg.StatusMsgType);
 
 				// 写入接收缓存
 				using (var _locker = await RecvCachesMutex.LockAsync ())
-					RecvCaches.Add ((_msg, _reply, DateTime.Now));
+					RecvCaches.Add ((_msg, null, DateTime.Now));
 			} else if (_msg is IImContentMsg _cntmsg) {
 				// 判定是否重复
 				if (await CheckRecvRepeatAsync (_msg))
@@ -173,7 +181,7 @@ namespace PureIM {
 				_cntmsg.MsgId = 0;
 				_cntmsg.SendTime = DateTime.Now;
 
-				if (_msg is v0_PrivateMsg _pmsg) {
+				if (_msg is tb_ImPrivateMsg _pmsg) {
 					var (_check, _reason) = await ImServer.Filter.CheckAccept (UserId, _pmsg);
 					if (!_check) {
 						await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, _reason);
@@ -181,8 +189,8 @@ namespace PureIM {
 					}
 
 					if (_pmsg.Type.IsStore ())
-						_pmsg.MsgId = await DataStorer.StoreMsg (_pmsg);
-				} else if (_msg is v0_TopicMsg _tmsg) {
+						_pmsg.MsgId = await DataStorer.StoreMsgAsync (_pmsg);
+				} else if (_msg is tb_ImTopicMsg _tmsg) {
 					var (_check, _reason) = await ImServer.Filter.CheckAccept (UserId, _tmsg);
 					if (!_check) {
 						await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, _reason);
@@ -190,7 +198,7 @@ namespace PureIM {
 					}
 
 					if (_tmsg.Type.IsStore ())
-						_tmsg.MsgId = await DataStorer.StoreMsg (_tmsg);
+						_tmsg.MsgId = await DataStorer.StoreMsgAsync (_tmsg);
 				}
 
 				// 回复发送者
@@ -198,8 +206,8 @@ namespace PureIM {
 
 				// 发送给接收者
 				var _receivers = _cntmsg switch {
-					v0_PrivateMsg _priv_msg => new List<long> { _priv_msg.RecverUserId },
-					v0_TopicMsg _topic_msg => await ImServer.GetTopicUserIds (_topic_msg.TopicId, _topic_msg.Type.IsOnlineOnly ()),
+					tb_ImPrivateMsg _priv_msg => new List<long> { _priv_msg.RecverUserId },
+					tb_ImTopicMsg _topic_msg => await ImServer.GetTopicUserIds (_topic_msg.TopicId, _topic_msg.Type.IsOnlineOnly ()),
 					_ => new List<long> (),
 				};
 				foreach (var _receiver in _receivers)

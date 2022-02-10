@@ -109,7 +109,7 @@ namespace PureIM {
 					using (var _locker = await ClientsMutex.LockAsync ())
 						return Clients.Keys.ToList ();
 				} else {
-					return await DataStorer.GetAllUserIds ();
+					return await DataStorer.GetAllUserIdsAsync ();
 				}
 			} else {
 				// 主题消息
