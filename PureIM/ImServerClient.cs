@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using PureIM.DataModel;
+using Newtonsoft.Json;
 
 namespace PureIM {
 	public enum OnlineStatus { Offline, Online, TempOffline }
@@ -157,15 +158,51 @@ namespace PureIM {
 				if (await CheckRecvRepeatAsync (_msg))
 					return;
 
+				// 错误校验
+				if (_stupd_msg.StatusMsgType == StatusMsgType.Accept)
+					return;
+				bool _is_recver = (_stupd_msg.StatusMsgType == StatusMsgType.RecverAccept || _stupd_msg.StatusMsgType == StatusMsgType.RecverReaded);
+				if (_stupd_msg.PrivateMsgs?.Count > 0) {
+					foreach (var _pv_items in _stupd_msg.PrivateMsgs) {
+						if ((_is_recver && _pv_items.RecverUserId != UserId) || ((!_is_recver) && _pv_items.SenderUserId != UserId)) {
+							// TODO 回复错误 用户ID不匹配
+							await SendFailureReplyAsync (-1, );
+							return;
+						}
+					}
+				}
+				if (_stupd_msg.TopicMsgs?.Count > 0) {
+					if (_stupd_msg.TopicMsgs.Count > 100) {
+						// TODO 回复错误 主题设置状态数量不允许超过1000
+						return;
+					}
+					if (!_is_recver) {
+						// TODO 回复错误 主题消息无法设置发送者已知悉
+						return;
+					}
+					using (var _locker = await ImServer.SubscriptionsMutex.LockAsync ()) {
+						foreach (var _topic_items in _stupd_msg.TopicMsgs) {
+							if (ImServer.Subscriptions.TryGetValue (_topic_items.TopicId, out var _uids)) {
+								if (!_uids.Contains (UserId)) {
+									// TODO 回复错误 用户ID不匹配
+									return;
+								}
+							} else {
+								// TODO 回复错误 主题消息无法设置发送者已知悉
+								return;
+							}
+						}
+					}
+				}
+
 				// 存档
 				if (_stupd_msg.PrivateMsgs?.Count > 0) {
 					await DataStorer.UpdateStatusAsync (_stupd_msg.PrivateMsgs, _stupd_msg.StatusMsgType);
-					if ((_stupd_msg.StatusMsgType == StatusMsgType.RecverAccept && Config.EnableReceiverReceivedNotify) ||
-						(_stupd_msg.StatusMsgType == StatusMsgType.RecverReaded && Config.EnableReceiverReadedNotify)) {
-						bool _recv = _stupd_msg.StatusMsgType == StatusMsgType.RecverAccept;
-						foreach (var (_msgid, _sender_userid, _recver_userid) in _stupd_msg.PrivateMsgs)
-							await ImServer.SendAsync (_sender_userid, new v0_StatusUpdate { MsgId = -1, Seq = -1 });
-					}
+					//if (_stupd_msg.StatusMsgType == StatusMsgType.RecverAccept || _stupd_msg.StatusMsgType == StatusMsgType.RecverReaded) {
+					//	bool _recv = _stupd_msg.StatusMsgType == StatusMsgType.RecverAccept;
+					//	foreach (var (_msgid, _sender_userid, _recver_userid) in _stupd_msg.PrivateMsgs)
+					//		await ImServer.SendAsync (_sender_userid, new v0_StatusUpdate { MsgId = -1, Seq = -1 });
+					//}
 				}
 				if (_stupd_msg.TopicMsgs?.Count > 0)
 					await DataStorer.UpdateStatusAsync (_stupd_msg.TopicMsgs, _stupd_msg.StatusMsgType);
@@ -184,7 +221,7 @@ namespace PureIM {
 				if (_msg is tb_ImPrivateMsg _pmsg) {
 					var (_check, _reason) = await ImServer.Filter.CheckAccept (UserId, _pmsg);
 					if (!_check) {
-						await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, _reason);
+						await SendFailureReplyAsync (_cntmsg.MsgId, _msg.Seq, _reason);
 						return;
 					}
 
@@ -193,16 +230,16 @@ namespace PureIM {
 				} else if (_msg is tb_ImTopicMsg _tmsg) {
 					var (_check, _reason) = await ImServer.Filter.CheckAccept (UserId, _tmsg);
 					if (!_check) {
-						await SendFailureReplyAsync (_msg.MsgId, _msg.Seq, _reason);
+						await SendFailureReplyAsync (_cntmsg.MsgId, _msg.Seq, _reason);
 						return;
 					}
 
 					if (_tmsg.Type.IsStore ())
-						_tmsg.MsgId = await DataStorer.StoreMsgAsync (_tmsg);
+						_cntmsg.MsgId = await DataStorer.StoreMsgAsync (_tmsg);
 				}
 
 				// 回复发送者
-				await SendAndLoggingAsync (v0_ReplyMsg.Success (_msg.MsgId, _msg.Seq, "accept"));
+				await SendSuccessReplyAsync (_cntmsg.MsgId, _msg.Seq);
 
 				// 发送给接收者
 				var _receivers = _cntmsg switch {
@@ -216,11 +253,11 @@ namespace PureIM {
 		}
 
 		public async Task SendSuccessReplyAsync (long _msgid, long _seq) {
-			await SendAndLoggingAsync (v0_ReplyMsg.Success (_msgid, _seq, "accept"));
+			await SendAndLoggingAsync (v0_ReplyMsg.Success ($"accept seq[{_seq}] new_msgid[{_msgid}]"));
 		}
 
-		public async Task SendFailureReplyAsync (long _msgid, long _seq, string _reason) {
-			await SendAndLoggingAsync (v0_ReplyMsg.Failure (_msgid, _seq, _reason));
+		public async Task SendFailureReplyAsync (string _reason) {
+			await SendAndLoggingAsync (v0_ReplyMsg.Failure (_reason));
 		}
 	}
 }

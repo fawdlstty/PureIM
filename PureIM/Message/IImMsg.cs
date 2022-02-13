@@ -27,7 +27,6 @@ namespace PureIM.Message {
 	[Union (3, typeof (tb_ImTopicMsg))]
 	[Union (4, typeof (v0_StatusUpdate))]
 	public interface IImMsg {
-		public long MsgId { get; set; }
 		public long Seq { get; set; }
 
 

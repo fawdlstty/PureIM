@@ -132,11 +132,10 @@ namespace PureIM {
 
 		// 客户端列表
 		private static Dictionary<long, ImServerClient> Clients { get; set; } = new Dictionary<long, ImServerClient> ();
-		private static AsyncLocker ClientsMutex = new AsyncLocker ();
+		private static AsyncLocker ClientsMutex { get; set; } = new AsyncLocker ();
 
 		// 订阅列表
-		private static Dictionary<long, HashSet<long>> Subscriptions { get; set; } = new Dictionary<long, HashSet<long>> ();
-
-		private static AsyncLocker SubscriptionsMutex = new AsyncLocker ();
+		public static Dictionary<long, HashSet<long>> Subscriptions { get; set; } = new Dictionary<long, HashSet<long>> ();
+		public static AsyncLocker SubscriptionsMutex { get; set; } = new AsyncLocker ();
 	}
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace PureIM.Message {
 	public interface IImContentMsg: IImMsg {
+		public long MsgId { get; set; }
 		public long SenderUserId { get; set; }
 		public MsgType Type { get; set; }
 		public DateTime SendTime { get; set; }
